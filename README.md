@@ -43,16 +43,11 @@ ORION follows an event-driven microservices architecture:
 
 ## 🔁 Saga Flow
 
-```text
-OrderCreated
-→ InventoryReserved
-→ PaymentCompleted
-→ ShippingCreated
-→ NotificationSent
+OrderCreated → InventoryReserved → PaymentCompleted → ShippingCreated → NotificationSent
 
-Detailed flow: docs/saga-flow.md
+Detailed flow: `docs/saga-flow.md`
 
-▶️ How to Run
+## ▶️ How to Run
 1. Start infrastructure
 cd infra
 docker compose up -d
