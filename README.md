@@ -8,8 +8,6 @@ This project demonstrates how real-world scalable backend systems are designed a
 
 ## 🧠 Architecture Overview
 
-ORION follows an event-driven microservices architecture:
-
 - Each service is independent
 - Services communicate via Kafka
 - No direct HTTP communication between services
@@ -19,25 +17,17 @@ ORION follows an event-driven microservices architecture:
 
 ## ⚙️ Tech Stack
 
-- FastAPI
-- PostgreSQL
-- Kafka
-- Redis
-- Docker Compose
-- SQLAlchemy
-- Python
+FastAPI, PostgreSQL, Kafka, Redis, Docker Compose, SQLAlchemy, Python
 
 ---
 
 ## 🧩 Services
 
-| Service | Responsibility |
-|--------|--------------|
-| order-service | Creates orders and starts Saga |
-| inventory-service | Reserves stock |
-| payment-service | Processes payment |
-| shipping-service | Creates shipment |
-| notification-service | Sends notification |
+- order-service → Creates orders and starts Saga
+- inventory-service → Reserves stock
+- payment-service → Processes payment
+- shipping-service → Creates shipment
+- notification-service → Sends notification
 
 ---
 
@@ -45,61 +35,75 @@ ORION follows an event-driven microservices architecture:
 
 OrderCreated → InventoryReserved → PaymentCompleted → ShippingCreated → NotificationSent
 
-Detailed flow: `docs/saga-flow.md`
+Detailed flow: docs/saga-flow.md
+
+---
 
 ## ▶️ How to Run
-1. Start infrastructure
-cd infra
-docker compose up -d
-2. Start services (each in separate terminal)
-# Order Service
-cd services/order-service
-uvicorn app.main:app --reload
-# Inventory Service
-cd services/inventory-service
-python -m app.main
-# Payment Service
-cd services/payment-service
-python -m app.main
-# Shipping Service
-cd services/shipping-service
-python -m app.main
-# Notification Service
-cd services/notification-service
-python -m app.main
-3. Test API
 
-Open Swagger:
+1. Start infrastructure  
+cd infra  
+docker compose up -d  
 
-http://127.0.0.1:8000/docs
+2. Start services (each in separate terminal)  
 
-Create order:
+Order Service  
+cd services/order-service  
+uvicorn app.main:app --reload  
 
-{
-  "product_name": "Laptop",
-  "quantity": 1
-}
-🧪 What This Project Demonstrates
-Microservices architecture
-Event-driven communication
-Kafka messaging
-Saga pattern (distributed transaction)
-Service decoupling
-Real-world backend system design
-🚀 Future Improvements
-Payment failure & compensation flow
-Inventory rollback
-Transactional Outbox Pattern
-Idempotency handling
-Retry mechanisms
-Dead Letter Queue (DLQ)
-Observability (Prometheus + Grafana)
-👨‍💻 Author
+Inventory Service  
+cd services/inventory-service  
+python -m app.main  
 
-Atakan Avsever
+Payment Service  
+cd services/payment-service  
+python -m app.main  
 
-GitHub: https://github.com/Atakan-Avs
+Shipping Service  
+cd services/shipping-service  
+python -m app.main  
+
+Notification Service  
+cd services/notification-service  
+python -m app.main  
+
+3. Test API  
+
+http://127.0.0.1:8000/docs  
+
+Example request:  
+{ "product_name": "Laptop", "quantity": 1 }
+
+---
+
+## 🏗️ Architecture Highlights
+
+- Event-driven communication using Kafka (no direct service-to-service HTTP calls)
+- Saga pattern implementation for distributed transaction management
+- Each service is independently deployable and isolated
+- Asynchronous processing via Kafka consumers
+- Decoupled system design enabling scalability and fault tolerance
+
+---
+
+## ⚡ Key Concepts Demonstrated
+
+- Distributed system design
+- Event-driven architecture
+- Service decoupling
+- Eventually consistent systems
+- Message-based communication
+
+---
+
+## 🚀 Future Improvements
+
+Payment failure handling, compensation flow, idempotency, retry logic, DLQ, observability
+
+---
+
+## 👨‍💻 Author
+
+Atakan Avsever  
+GitHub: https://github.com/Atakan-Avs  
 LinkedIn: https://linkedin.com/in/atakanavsever
-⭐️ Notes
-
-This project is designed as a portfolio-level backend system to demonstrate production-grade architecture concepts.
