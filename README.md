@@ -2,17 +2,17 @@
 
 ORION is a production-oriented distributed order management system that demonstrates a real-world microservices architecture using the Saga pattern and event-driven communication.
 
-This project focuses on how scalable backend systems are designed in production environments.
+This project showcases how scalable backend systems are designed in production environments.
 
 ---
 
 ## 🧠 Architecture Overview
 
-- Fully event-driven architecture (no direct service-to-service HTTP communication)
-- Services communicate asynchronously via Kafka
-- Saga pattern used for distributed transaction management
+- Fully event-driven architecture (no direct service-to-service HTTP calls)
+- Asynchronous communication via Kafka
+- Saga pattern for distributed transaction management
 - Each service is isolated and independently executable
-- Designed for scalability and fault tolerance
+- Designed for scalability, resilience and loose coupling
 
 ---
 
@@ -55,7 +55,7 @@ docker compose up -d
 
 ---
 
-### 2. Start services (each in a separate terminal)
+### 2. Start services (each in separate terminal)
 
 Order Service  
 cd services/order-service  
@@ -86,9 +86,9 @@ http://127.0.0.1:8000/docs
 
 Example request:
 
-{
-  "product_name": "Laptop",
-  "quantity": 1
+{  
+  "product_name": "Laptop",  
+  "quantity": 1  
 }
 
 ---
@@ -99,7 +99,7 @@ Example request:
 - Saga pattern for distributed transactions
 - Decoupled services with asynchronous workflows
 - Independently deployable service structure
-- Designed for scalability and resilience
+- Designed for scalability and fault tolerance
 
 ---
 
@@ -108,7 +108,7 @@ Example request:
 - Chose event-driven architecture over synchronous HTTP to reduce coupling
 - Implemented Saga pattern to manage distributed transactions without central coordination
 - Used Kafka for reliable event streaming and asynchronous processing
-- Separated services into independent units to simulate real production systems
+- Designed services as independently executable units
 
 ---
 
@@ -116,7 +116,7 @@ Example request:
 
 - Eventual consistency instead of strong consistency
 - Increased complexity due to microservices architecture
-- Requires monitoring and observability in real-world scenarios
+- Requires proper monitoring and observability in real-world systems
 
 ---
 
@@ -130,14 +130,40 @@ Example request:
 
 ---
 
+## 🚧 Current Limitations
+
+- No retry mechanism implemented
+- No dead letter queue (DLQ)
+- No idempotency handling
+- No centralized logging
+
+---
+
 ## 🚀 Future Improvements
 
-- Payment failure and compensation flow
-- Inventory rollback mechanism
+- Payment failure & compensation flow
+- Inventory rollback
 - Transactional Outbox Pattern
 - Idempotency handling
 - Retry mechanisms and DLQ
 - Observability (Prometheus + Grafana)
+
+---
+
+## 📦 Project Structure
+
+services/  
+  ├── order-service/  
+  ├── inventory-service/  
+  ├── payment-service/  
+  ├── shipping-service/  
+  └── notification-service/  
+
+infra/  
+  └── docker-compose.yml  
+
+docs/  
+  └── saga-flow.md  
 
 ---
 
@@ -151,4 +177,4 @@ LinkedIn: https://linkedin.com/in/atakanavsever
 
 ## ⭐️ Notes
 
-This project is designed as a portfolio-level backend system to demonstrate production-grade architecture concepts.
+This project is built as a portfolio-level backend system to demonstrate production-grade architecture concepts.
