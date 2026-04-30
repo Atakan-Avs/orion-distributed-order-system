@@ -1,33 +1,40 @@
 # ORION - Distributed Order System 🚀
 
-ORION is a production-oriented distributed order management system built with a microservices architecture using the Saga pattern and event-driven communication.
+ORION is a production-oriented distributed order management system that demonstrates a real-world microservices architecture using the Saga pattern and event-driven communication.
 
-This project demonstrates how real-world scalable backend systems are designed and implemented.
+This project focuses on how scalable backend systems are designed in production environments.
 
 ---
 
 ## 🧠 Architecture Overview
 
-- Each service is independent
-- Services communicate via Kafka
-- No direct HTTP communication between services
-- Uses Saga pattern for distributed transactions
+- Fully event-driven architecture (no direct service-to-service HTTP communication)
+- Services communicate asynchronously via Kafka
+- Saga pattern used for distributed transaction management
+- Each service is isolated and independently executable
+- Designed for scalability and fault tolerance
 
 ---
 
 ## ⚙️ Tech Stack
 
-FastAPI, PostgreSQL, Kafka, Redis, Docker Compose, SQLAlchemy, Python
+- FastAPI
+- PostgreSQL
+- Kafka
+- Redis
+- Docker Compose
+- SQLAlchemy
+- Python
 
 ---
 
 ## 🧩 Services
 
-- order-service → Creates orders and starts Saga
-- inventory-service → Reserves stock
-- payment-service → Processes payment
-- shipping-service → Creates shipment
-- notification-service → Sends notification
+- **order-service** → creates orders and starts the Saga
+- **inventory-service** → reserves stock
+- **payment-service** → processes payment
+- **shipping-service** → creates shipment
+- **notification-service** → sends notifications
 
 ---
 
@@ -41,11 +48,14 @@ Detailed flow: docs/saga-flow.md
 
 ## ▶️ How to Run
 
-1. Start infrastructure  
+### 1. Start infrastructure
+
 cd infra  
 docker compose up -d  
 
-2. Start services (each in separate terminal)  
+---
+
+### 2. Start services (each in a separate terminal)
 
 Order Service  
 cd services/order-service  
@@ -67,22 +77,46 @@ Notification Service
 cd services/notification-service  
 python -m app.main  
 
-3. Test API  
+---
 
+### 3. Test API
+
+Swagger UI:  
 http://127.0.0.1:8000/docs  
 
-Example request:  
-{ "product_name": "Laptop", "quantity": 1 }
+Example request:
+
+{
+  "product_name": "Laptop",
+  "quantity": 1
+}
 
 ---
 
 ## 🏗️ Architecture Highlights
 
-- Event-driven communication using Kafka (no direct service-to-service HTTP calls)
-- Saga pattern implementation for distributed transaction management
-- Each service is independently deployable and isolated
-- Asynchronous processing via Kafka consumers
-- Decoupled system design enabling scalability and fault tolerance
+- Event-driven communication using Kafka
+- Saga pattern for distributed transactions
+- Decoupled services with asynchronous workflows
+- Independently deployable service structure
+- Designed for scalability and resilience
+
+---
+
+## 🧠 Design Decisions
+
+- Chose event-driven architecture over synchronous HTTP to reduce coupling
+- Implemented Saga pattern to manage distributed transactions without central coordination
+- Used Kafka for reliable event streaming and asynchronous processing
+- Separated services into independent units to simulate real production systems
+
+---
+
+## ⚖️ Trade-offs
+
+- Eventual consistency instead of strong consistency
+- Increased complexity due to microservices architecture
+- Requires monitoring and observability in real-world scenarios
 
 ---
 
@@ -98,7 +132,12 @@ Example request:
 
 ## 🚀 Future Improvements
 
-Payment failure handling, compensation flow, idempotency, retry logic, DLQ, observability
+- Payment failure and compensation flow
+- Inventory rollback mechanism
+- Transactional Outbox Pattern
+- Idempotency handling
+- Retry mechanisms and DLQ
+- Observability (Prometheus + Grafana)
 
 ---
 
@@ -106,4 +145,10 @@ Payment failure handling, compensation flow, idempotency, retry logic, DLQ, obse
 
 Atakan Avsever  
 GitHub: https://github.com/Atakan-Avs  
-LinkedIn: https://linkedin.com/in/atakanavsever
+LinkedIn: https://linkedin.com/in/atakanavsever  
+
+---
+
+## ⭐️ Notes
+
+This project is designed as a portfolio-level backend system to demonstrate production-grade architecture concepts.
