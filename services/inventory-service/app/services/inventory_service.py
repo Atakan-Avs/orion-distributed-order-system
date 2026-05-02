@@ -1,20 +1,28 @@
 from app.events.kafka_producer import publish_event
+from app.core.event_factory import create_event
 
 
 def reserve_inventory(event: dict):
     print(f"[Inventory Service] OrderCreated event received: {event}")
 
-    order_id = event.get("order_id")
-    product_name = event.get("product_name")
-    quantity = event.get("quantity")
+    payload = event.get("payload", {})
 
-    inventory_event = {
-        "event_type": "InventoryReserved",
-        "order_id": order_id,
-        "product_name": product_name,
-        "quantity": quantity,
-        "status": "RESERVED",
-    }
+    order_id = payload.get("order_id")
+    product_name = payload.get("product_name")
+    quantity = payload.get("quantity")
+
+    inventory_event = create_event(
+        event_type="InventoryReserved",
+        source="inventory-service",
+        payload={
+            "order_id": order_id,
+            "product_name": product_name,
+            "quantity": quantity,
+            "status": "RESERVED",
+        },
+        correlation_id=event.get("correlation_id"),  
+        causation_id=event.get("event_id"),           
+    )
 
     publish_event("inventory-events", inventory_event)
 

@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 
 from app.models.order import Order
 from app.events.kafka_producer import publish_event
+from app.core.event_factory import create_event
 
 
 def create_order(db: Session, product_name: str, quantity: int):
@@ -10,13 +11,16 @@ def create_order(db: Session, product_name: str, quantity: int):
     db.commit()
     db.refresh(order)
 
-    event = {
-        "event_type": "OrderCreated",
-        "order_id": order.id,
-        "product_name": order.product_name,
-        "quantity": order.quantity,
-        "status": order.status,
-    }
+    event = create_event(
+        event_type="OrderCreated",
+        source="order-service",
+        payload={
+            "order_id": order.id,
+            "product_name": order.product_name,
+            "quantity": order.quantity,
+            "status": order.status,
+        },
+    )
 
     publish_event("order-events", event)
 
