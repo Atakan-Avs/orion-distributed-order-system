@@ -8,33 +8,33 @@ This project showcases how scalable backend systems are designed in production e
 
 ## 🧠 Architecture Overview
 
-- Fully event-driven architecture (no direct service-to-service HTTP calls)
-- Asynchronous communication via Kafka
-- Saga pattern for distributed transaction management
-- Each service is isolated and independently executable
-- Designed for scalability, resilience and loose coupling
+* Fully event-driven architecture (no direct service-to-service HTTP calls)
+* Asynchronous communication via Kafka
+* Saga pattern for distributed transaction management
+* Each service is isolated and independently executable
+* Designed for scalability, resilience and loose coupling
 
 ---
 
 ## ⚙️ Tech Stack
 
-- FastAPI
-- PostgreSQL
-- Kafka
-- Redis
-- Docker Compose
-- SQLAlchemy
-- Python
+* FastAPI
+* PostgreSQL
+* Kafka
+* Redis
+* Docker Compose
+* SQLAlchemy
+* Python
 
 ---
 
 ## 🧩 Services
 
-- **order-service** → creates orders and starts the Saga
-- **inventory-service** → reserves stock
-- **payment-service** → processes payment
-- **shipping-service** → creates shipment
-- **notification-service** → sends notifications
+* **order-service** → creates orders and starts the Saga
+* **inventory-service** → reserves stock
+* **payment-service** → processes payment
+* **shipping-service** → creates shipment
+* **notification-service** → sends notifications
 
 ---
 
@@ -42,7 +42,7 @@ This project showcases how scalable backend systems are designed in production e
 
 OrderCreated → InventoryReserved → PaymentCompleted → ShippingCreated → NotificationSent
 
-Detailed flow: docs/saga-flow.md
+Detailed flow: `docs/saga-flow.md`
 
 ---
 
@@ -50,128 +50,163 @@ Detailed flow: docs/saga-flow.md
 
 ### 1. Start infrastructure
 
-cd infra  
-docker compose up -d  
+```bash
+cd infra
+docker compose up -d
+```
 
 ---
 
 ### 2. Start services (each in separate terminal)
 
-Order Service  
-cd services/order-service  
-uvicorn app.main:app --reload  
+#### Order Service
 
-Inventory Service  
-cd services/inventory-service  
-python -m app.main  
+```bash
+cd services/order-service
+uvicorn app.main:app --reload
+```
 
-Payment Service  
-cd services/payment-service  
-python -m app.main  
+#### Inventory Service
 
-Shipping Service  
-cd services/shipping-service  
-python -m app.main  
+```bash
+cd services/inventory-service
+python -m app.main
+```
 
-Notification Service  
-cd services/notification-service  
-python -m app.main  
+#### Payment Service
+
+```bash
+cd services/payment-service
+python -m app.main
+```
+
+#### Shipping Service
+
+```bash
+cd services/shipping-service
+python -m app.main
+```
+
+#### Notification Service
+
+```bash
+cd services/notification-service
+python -m app.main
+```
 
 ---
 
 ### 3. Test API
 
-Swagger UI:  
-http://127.0.0.1:8000/docs  
+Swagger UI:
+http://127.0.0.1:8000/docs
 
 Example request:
 
-{  
-  "product_name": "Laptop",  
-  "quantity": 1  
+```json
+{
+  "product_name": "Laptop",
+  "quantity": 1
 }
+```
 
 ---
 
 ## 🏗️ Architecture Highlights
 
-- Event-driven communication using Kafka
-- Saga pattern for distributed transactions
-- Decoupled services with asynchronous workflows
-- Independently deployable service structure
-- Designed for scalability and fault tolerance
+* Event-driven communication using Kafka
+* Saga pattern for distributed transactions
+* Decoupled services with asynchronous workflows
+* Independently deployable service structure
+* Designed for scalability and fault tolerance
+
+---
+
+## 🛡️ Reliability Features
+
+* Standardized event envelope across all services
+* Correlation ID support for distributed tracing
+* Causation ID for event lineage tracking
+* Idempotent event processing in inventory-service
+* Duplicate events are safely detected and skipped
+* Processed events are persisted in PostgreSQL
 
 ---
 
 ## 🧠 Design Decisions
 
-- Chose event-driven architecture over synchronous HTTP to reduce coupling
-- Implemented Saga pattern to manage distributed transactions without central coordination
-- Used Kafka for reliable event streaming and asynchronous processing
-- Designed services as independently executable units
+* Chose event-driven architecture over synchronous HTTP to reduce coupling
+* Implemented Saga pattern to manage distributed transactions without central coordination
+* Used Kafka for reliable event streaming and asynchronous processing
+* Designed services as independently executable units
 
 ---
 
 ## ⚖️ Trade-offs
 
-- Eventual consistency instead of strong consistency
-- Increased complexity due to microservices architecture
-- Requires proper monitoring and observability in real-world systems
+* Eventual consistency instead of strong consistency
+* Increased complexity due to microservices architecture
+* Requires proper monitoring and observability in real-world systems
 
 ---
 
 ## ⚡ Key Concepts Demonstrated
 
-- Distributed system design
-- Event-driven architecture
-- Service decoupling
-- Eventually consistent systems
-- Message-based communication
+* Distributed system design
+* Event-driven architecture
+* Service decoupling
+* Eventually consistent systems
+* Message-based communication
 
 ---
 
 ## 🚧 Current Limitations
 
-- No retry mechanism implemented
-- No dead letter queue (DLQ)
-- No idempotency handling
-- No centralized logging
+* No retry mechanism implemented
+* No dead letter queue (DLQ)
+* Idempotency is currently implemented only in inventory-service
+* Payment, shipping and notification services still need idempotency handling
+* No centralized logging
 
 ---
 
 ## 🚀 Future Improvements
 
-- Payment failure & compensation flow
-- Inventory rollback
-- Transactional Outbox Pattern
-- Idempotency handling
-- Retry mechanisms and DLQ
-- Observability (Prometheus + Grafana)
+* Add idempotency handling to payment-service
+* Add idempotency handling to shipping-service
+* Add idempotency handling to notification-service
+* Payment failure & compensation flow
+* Inventory rollback
+* Transactional Outbox Pattern
+* Retry mechanisms and DLQ
+* Observability (Prometheus + Grafana)
 
 ---
 
 ## 📦 Project Structure
 
-services/  
-  ├── order-service/  
-  ├── inventory-service/  
-  ├── payment-service/  
-  ├── shipping-service/  
-  └── notification-service/  
+```
+services/
+  ├── order-service/
+  ├── inventory-service/
+  ├── payment-service/
+  ├── shipping-service/
+  └── notification-service/
 
-infra/  
-  └── docker-compose.yml  
+infra/
+  └── docker-compose.yml
 
-docs/  
-  └── saga-flow.md  
+docs/
+  └── saga-flow.md
+```
 
 ---
 
 ## 👨‍💻 Author
 
-Atakan Avsever  
-GitHub: https://github.com/Atakan-Avs  
-LinkedIn: https://linkedin.com/in/atakanavsever  
+Atakan Avsever
+GitHub: https://github.com/Atakan-Avs
+LinkedIn: https://linkedin.com/in/atakanavsever
 
 ---
 
