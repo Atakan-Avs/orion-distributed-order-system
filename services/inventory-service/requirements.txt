@@ -1,2 +1,4 @@
 kafka-python
 python-dotenv
+sqlalchemy
+psycopg2-binary
