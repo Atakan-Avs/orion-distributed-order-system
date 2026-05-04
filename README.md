@@ -40,7 +40,11 @@ This project showcases how scalable backend systems are designed in production e
 
 ## 🔁 Saga Flow
 
-OrderCreated → InventoryReserved → PaymentCompleted → ShippingCreated → NotificationSent
+OrderCreated
+→ InventoryReserved
+→ PaymentCompleted
+→ ShippingCreated
+→ NotificationSent
 
 Detailed flow: `docs/saga-flow.md`
 
@@ -127,7 +131,7 @@ Example request:
 * Standardized event envelope across all services
 * Correlation ID support for distributed tracing
 * Causation ID for event lineage tracking
-* Idempotent event processing in inventory-service
+* Idempotent event processing implemented in all services
 * Duplicate events are safely detected and skipped
 * Processed events are persisted in PostgreSQL
 
@@ -160,26 +164,35 @@ Example request:
 
 ---
 
+## 🧪 Idempotency Test
+
+Duplicate events can be tested by publishing the same `event_id` multiple times to Kafka topics.
+
+Expected behavior:
+
+* First event is processed successfully
+* Second event with the same `event_id` is skipped
+* Event processing is recorded in PostgreSQL
+
+---
+
 ## 🚧 Current Limitations
 
 * No retry mechanism implemented
 * No dead letter queue (DLQ)
-* Idempotency is currently implemented only in inventory-service
-* Payment, shipping and notification services still need idempotency handling
 * No centralized logging
+* No distributed tracing system (e.g., OpenTelemetry)
 
 ---
 
 ## 🚀 Future Improvements
 
-* Add idempotency handling to payment-service
-* Add idempotency handling to shipping-service
-* Add idempotency handling to notification-service
 * Payment failure & compensation flow
 * Inventory rollback
 * Transactional Outbox Pattern
 * Retry mechanisms and DLQ
 * Observability (Prometheus + Grafana)
+* Distributed tracing (OpenTelemetry)
 
 ---
 
@@ -204,9 +217,10 @@ docs/
 
 ## 👨‍💻 Author
 
-Atakan Avsever
-GitHub: https://github.com/Atakan-Avs
-LinkedIn: https://linkedin.com/in/atakanavsever
+**Atakan Avsever**
+
+* GitHub: https://github.com/Atakan-Avs
+* LinkedIn: https://linkedin.com/in/atakanavsever
 
 ---
 
