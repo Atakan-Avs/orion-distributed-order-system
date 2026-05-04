@@ -31,20 +31,35 @@ This project showcases how scalable backend systems are designed in production e
 ## 🧩 Services
 
 * **order-service** → creates orders and starts the Saga
-* **inventory-service** → reserves stock
-* **payment-service** → processes payment
+* **inventory-service** → reserves stock and releases inventory on failure
+* **payment-service** → processes payment and can fail
 * **shipping-service** → creates shipment
-* **notification-service** → sends notifications
+* **notification-service** → sends success and cancellation notifications
 
 ---
 
 ## 🔁 Saga Flow
+
+### ✅ Successful Flow
 
 OrderCreated
 → InventoryReserved
 → PaymentCompleted
 → ShippingCreated
 → NotificationSent
+
+---
+
+### ❌ Compensation Flow (Payment Failure)
+
+OrderCreated
+→ InventoryReserved
+→ PaymentFailed
+→ InventoryReleased
+→ OrderCancelled
+→ CancellationNotificationSent
+
+---
 
 Detailed flow: `docs/saga-flow.md`
 
@@ -110,7 +125,7 @@ Example request:
 ```json
 {
   "product_name": "Laptop",
-  "quantity": 1
+  "quantity": 6
 }
 ```
 
@@ -134,6 +149,7 @@ Example request:
 * Idempotent event processing implemented in all services
 * Duplicate events are safely detected and skipped
 * Processed events are persisted in PostgreSQL
+* Compensation (rollback) mechanism for failed transactions
 
 ---
 
@@ -161,6 +177,8 @@ Example request:
 * Service decoupling
 * Eventually consistent systems
 * Message-based communication
+* Idempotency handling
+* Saga compensation (rollback) pattern
 
 ---
 
@@ -187,10 +205,8 @@ Expected behavior:
 
 ## 🚀 Future Improvements
 
-* Payment failure & compensation flow
-* Inventory rollback
-* Transactional Outbox Pattern
 * Retry mechanisms and DLQ
+* Transactional Outbox Pattern
 * Observability (Prometheus + Grafana)
 * Distributed tracing (OpenTelemetry)
 
