@@ -3,13 +3,17 @@ from kafka import KafkaConsumer
 
 from app.core.config import KAFKA_BOOTSTRAP_SERVERS
 from app.db.database import SessionLocal
-from app.services.notification_service import send_notification
+from app.services.notification_service import (
+    send_shipping_notification,
+    send_cancellation_notification,
+)
 from app.services.idempotency_service import is_event_processed, mark_event_processed
 
 
 def start_consumer():
     consumer = KafkaConsumer(
         "shipping-events",
+        "order-events",
         bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
         auto_offset_reset="earliest",
         enable_auto_commit=True,
@@ -18,7 +22,7 @@ def start_consumer():
         api_version=(2, 8, 0),
     )
 
-    print("[Notification Service] Listening to shipping-events...")
+    print("[Notification Service] Listening to shipping-events and order-events...")
 
     for message in consumer:
         event = message.value
@@ -26,7 +30,7 @@ def start_consumer():
         event_id = event.get("event_id")
         event_type = event.get("event_type")
 
-        if event_type != "ShippingCreated":
+        if event_type not in ["ShippingCreated", "OrderCancelled"]:
             continue
 
         if not event_id:
@@ -40,7 +44,11 @@ def start_consumer():
                 print(f"[Notification Service] Duplicate event skipped: {event_id}")
                 continue
 
-            send_notification(event)
+            if event_type == "ShippingCreated":
+                send_shipping_notification(event)
+
+            elif event_type == "OrderCancelled":
+                send_cancellation_notification(event)
 
             mark_event_processed(
                 db=db,

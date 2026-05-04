@@ -3,13 +3,14 @@ from kafka import KafkaConsumer
 
 from app.core.config import KAFKA_BOOTSTRAP_SERVERS
 from app.db.database import SessionLocal
-from app.services.inventory_service import reserve_inventory
+from app.services.inventory_service import reserve_inventory, release_inventory
 from app.services.idempotency_service import is_event_processed, mark_event_processed
 
 
 def start_consumer():
     consumer = KafkaConsumer(
         "order-events",
+        "payment-events",
         bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
         auto_offset_reset="earliest",
         enable_auto_commit=True,
@@ -17,7 +18,7 @@ def start_consumer():
         value_deserializer=lambda value: json.loads(value.decode("utf-8")),
     )
 
-    print("[Inventory Service] Listening to order-events topic...")
+    print("[Inventory Service] Listening to order-events and payment-events topics...")
 
     for message in consumer:
         event = message.value
@@ -25,7 +26,7 @@ def start_consumer():
         event_id = event.get("event_id")
         event_type = event.get("event_type")
 
-        if event_type != "OrderCreated":
+        if event_type not in ["OrderCreated", "PaymentFailed"]:
             continue
 
         if not event_id:
@@ -39,7 +40,11 @@ def start_consumer():
                 print(f"[Inventory Service] Duplicate event skipped: {event_id}")
                 continue
 
-            reserve_inventory(event)
+            if event_type == "OrderCreated":
+                reserve_inventory(event)
+
+            elif event_type == "PaymentFailed":
+                release_inventory(event)
 
             mark_event_processed(
                 db=db,
