@@ -1,8 +1,8 @@
-from app.events.kafka_producer import publish_event
 from app.core.event_factory import create_event
+from app.models.outbox_event import OutboxEvent
 
 
-def reserve_inventory(event: dict):
+def reserve_inventory(db, event: dict):
     print(f"[Inventory Service] OrderCreated event received: {event}")
 
     payload = event.get("payload", {})
@@ -24,12 +24,21 @@ def reserve_inventory(event: dict):
         causation_id=event.get("event_id"),
     )
 
-    publish_event("inventory-events", inventory_event)
+    outbox_event = OutboxEvent(
+        topic="inventory-events",
+        event_type="InventoryReserved",
+        payload=inventory_event,
+    )
 
-    print(f"[Inventory Service] InventoryReserved event published: {inventory_event}")
+    db.add(outbox_event)
+
+    print(
+        f"[Inventory Service] InventoryReserved added to outbox: "
+        f"{inventory_event}"
+    )
 
 
-def release_inventory(event: dict):
+def release_inventory(db, event: dict):
     print(f"[Inventory Service] PaymentFailed event received: {event}")
 
     payload = event.get("payload", {})
@@ -51,6 +60,15 @@ def release_inventory(event: dict):
         causation_id=event.get("event_id"),
     )
 
-    publish_event("inventory-events", release_event)
+    outbox_event = OutboxEvent(
+        topic="inventory-events",
+        event_type="InventoryReleased",
+        payload=release_event,
+    )
 
-    print(f"[Inventory Service] InventoryReleased event published: {release_event}")
+    db.add(outbox_event)
+
+    print(
+        f"[Inventory Service] InventoryReleased added to outbox: "
+        f"{release_event}"
+    )

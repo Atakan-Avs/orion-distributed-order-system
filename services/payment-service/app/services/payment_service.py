@@ -1,8 +1,8 @@
-from app.events.kafka_producer import publish_event
 from app.core.event_factory import create_event
+from app.models.outbox_event import OutboxEvent
 
 
-def process_payment(event: dict):
+def process_payment(db, event: dict):
     print(f"[Payment Service] InventoryReserved event received: {event}")
 
     payload = event.get("payload", {})
@@ -11,9 +11,6 @@ def process_payment(event: dict):
     product_name = payload.get("product_name")
     quantity = payload.get("quantity")
 
-    # Demo failure rule:
-    # If quantity is greater than 5, payment fails.
-    # This allows us to test Saga compensation flow easily.
     if quantity and quantity > 5:
         payment_failed_event = create_event(
             event_type="PaymentFailed",
@@ -29,9 +26,15 @@ def process_payment(event: dict):
             causation_id=event.get("event_id"),
         )
 
-        publish_event("payment-events", payment_failed_event)
+        outbox_event = OutboxEvent(
+            topic="payment-events",
+            event_type="PaymentFailed",
+            payload=payment_failed_event,
+        )
 
-        print(f"[Payment Service] PaymentFailed event published: {payment_failed_event}")
+        db.add(outbox_event)
+
+        print(f"[Payment Service] PaymentFailed added to outbox: {payment_failed_event}")
         return
 
     payment_completed_event = create_event(
@@ -47,6 +50,12 @@ def process_payment(event: dict):
         causation_id=event.get("event_id"),
     )
 
-    publish_event("payment-events", payment_completed_event)
+    outbox_event = OutboxEvent(
+        topic="payment-events",
+        event_type="PaymentCompleted",
+        payload=payment_completed_event,
+    )
 
-    print(f"[Payment Service] PaymentCompleted event published: {payment_completed_event}")
+    db.add(outbox_event)
+
+    print(f"[Payment Service] PaymentCompleted added to outbox: {payment_completed_event}")

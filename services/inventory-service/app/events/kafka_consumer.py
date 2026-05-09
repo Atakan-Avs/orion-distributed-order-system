@@ -1,10 +1,11 @@
 import json
+
 from kafka import KafkaConsumer
 
 from app.core.config import KAFKA_BOOTSTRAP_SERVERS
 from app.db.database import SessionLocal
-from app.services.inventory_service import reserve_inventory, release_inventory
 from app.services.idempotency_service import is_event_processed, mark_event_processed
+from app.services.inventory_service import release_inventory, reserve_inventory
 
 
 def start_consumer():
@@ -41,16 +42,18 @@ def start_consumer():
                 continue
 
             if event_type == "OrderCreated":
-                reserve_inventory(event)
+                reserve_inventory(db, event)
 
             elif event_type == "PaymentFailed":
-                release_inventory(event)
+                release_inventory(db, event)
 
             mark_event_processed(
                 db=db,
                 event_id=event_id,
                 event_type=event_type,
             )
+
+            db.commit()
 
         except Exception as error:
             db.rollback()

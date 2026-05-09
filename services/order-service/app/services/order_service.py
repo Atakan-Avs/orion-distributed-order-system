@@ -1,15 +1,15 @@
 from sqlalchemy.orm import Session
 
-from app.models.order import Order
-from app.events.kafka_producer import publish_event
 from app.core.event_factory import create_event
+from app.models.order import Order
+from app.models.outbox_event import OutboxEvent
 
 
 def create_order(db: Session, product_name: str, quantity: int):
     order = Order(product_name=product_name, quantity=quantity)
+
     db.add(order)
-    db.commit()
-    db.refresh(order)
+    db.flush()
 
     event = create_event(
         event_type="OrderCreated",
@@ -22,7 +22,15 @@ def create_order(db: Session, product_name: str, quantity: int):
         },
     )
 
-    publish_event("order-events", event)
+    outbox_event = OutboxEvent(
+        topic="order-events",
+        event_type="OrderCreated",
+        payload=event,
+    )
+
+    db.add(outbox_event)
+    db.commit()
+    db.refresh(order)
 
     return order
 

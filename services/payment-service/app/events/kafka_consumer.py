@@ -40,13 +40,15 @@ def start_consumer():
                 print(f"[Payment Service] Duplicate event skipped: {event_id}")
                 continue
 
-            process_payment(event)
+            process_payment(db, event)
 
             mark_event_processed(
                 db=db,
                 event_id=event_id,
                 event_type=event_type,
             )
+            
+            db.commit()
 
         except Exception as error:
             db.rollback()

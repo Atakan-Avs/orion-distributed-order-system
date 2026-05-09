@@ -1,11 +1,12 @@
 import json
+
 from kafka import KafkaConsumer
 
 from app.core.config import KAFKA_BOOTSTRAP_SERVERS
 from app.core.event_factory import create_event
 from app.db.session import SessionLocal
-from app.events.kafka_producer import publish_event
 from app.models.order import Order
+from app.models.outbox_event import OutboxEvent
 
 
 def start_consumer():
@@ -46,7 +47,11 @@ def handle_payment_completed(event: dict):
             order.status = "COMPLETED"
             db.commit()
 
-            print(f"[Order Service] Order {order_id} COMPLETED ✅")
+            print(f"[Order Service] Order {order_id} COMPLETED")
+
+    except Exception as error:
+        db.rollback()
+        print(f"[Order Service] Error while completing order: {error}")
 
     finally:
         db.close()
@@ -66,7 +71,6 @@ def handle_inventory_released(event: dict):
 
         if order:
             order.status = "CANCELLED"
-            db.commit()
 
             order_cancelled_event = create_event(
                 event_type="OrderCancelled",
@@ -82,10 +86,21 @@ def handle_inventory_released(event: dict):
                 causation_id=event.get("event_id"),
             )
 
-            publish_event("order-events", order_cancelled_event)
+            outbox_event = OutboxEvent(
+                topic="order-events",
+                event_type="OrderCancelled",
+                payload=order_cancelled_event,
+            )
 
-            print(f"[Order Service] Order {order_id} CANCELLED due to payment failure ❌")
-            print(f"[Order Service] OrderCancelled event published: {order_cancelled_event}")
+            db.add(outbox_event)
+            db.commit()
+
+            print(f"[Order Service] Order {order_id} CANCELLED due to payment failure")
+            print(f"[Order Service] OrderCancelled added to outbox: {order_cancelled_event}")
+
+    except Exception as error:
+        db.rollback()
+        print(f"[Order Service] Error while cancelling order: {error}")
 
     finally:
         db.close()

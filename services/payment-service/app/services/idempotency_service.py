@@ -13,5 +13,5 @@ def mark_event_processed(db: Session, event_id: str, event_type: str):
         event_id=event_id,
         event_type=event_type,
     )
+
     db.add(processed_event)
-    db.commit()
