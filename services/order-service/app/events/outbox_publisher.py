@@ -6,6 +6,26 @@ from app.events.kafka_producer import publish_event
 from app.models.outbox_event import OutboxEvent
 
 MAX_RETRY_COUNT = 5
+DLQ_TOPIC = "order-events-dlq"
+
+
+def publish_to_dlq(event: OutboxEvent, error: Exception):
+    dlq_event = {
+        "original_outbox_id": event.id,
+        "original_topic": event.topic,
+        "event_type": event.event_type,
+        "payload": event.payload,
+        "error": str(error),
+        "failed_at": datetime.utcnow().isoformat(),
+        "retry_count": event.retry_count,
+    }
+
+    publish_event(DLQ_TOPIC, dlq_event)
+
+    print(
+        f"[Outbox Publisher] Event sent to DLQ. "
+        f"outbox_id={event.id} dlq_topic={DLQ_TOPIC}"
+    )
 
 
 def start_outbox_publisher():
@@ -42,6 +62,20 @@ def start_outbox_publisher():
                     event.last_error = str(error)
 
                     if event.retry_count >= MAX_RETRY_COUNT:
+                        try:
+                            publish_to_dlq(event, error)
+
+                        except Exception as dlq_error:
+                            event.last_error = (
+                                f"Original publish error: {error}; "
+                                f"DLQ publish error: {dlq_error}"
+                            )
+
+                            print(
+                                f"[Outbox Publisher] DLQ publish failed. "
+                                f"outbox_id={event.id} error={dlq_error}"
+                            )
+
                         event.failed = True
                         event.failed_at = datetime.utcnow()
 
@@ -49,6 +83,7 @@ def start_outbox_publisher():
                             f"[Outbox Publisher] Event moved to failed state. "
                             f"outbox_id={event.id} retry_count={event.retry_count}"
                         )
+
                     else:
                         print(
                             f"[Outbox Publisher] Publish failed. "
