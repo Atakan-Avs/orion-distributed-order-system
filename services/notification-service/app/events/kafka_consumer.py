@@ -55,6 +55,8 @@ def start_consumer():
                 event_id=event_id,
                 event_type=event_type,
             )
+            
+            db.commit()
 
         except Exception as error:
             db.rollback()
