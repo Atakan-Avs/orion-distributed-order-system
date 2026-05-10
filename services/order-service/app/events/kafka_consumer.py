@@ -5,14 +5,21 @@ from kafka import KafkaConsumer
 from app.core.config import KAFKA_BOOTSTRAP_SERVERS
 from app.core.event_factory import create_event
 from app.db.session import SessionLocal
-from app.models.order import Order
+from app.models.order import Order, OrderStatus
 from app.models.outbox_event import OutboxEvent
+
+
+TERMINAL_STATUSES = {
+    OrderStatus.COMPLETED,
+    OrderStatus.CANCELLED,
+}
 
 
 def start_consumer():
     consumer = KafkaConsumer(
-        "payment-events",
         "inventory-events",
+        "payment-events",
+        "shipping-events",
         bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
         auto_offset_reset="earliest",
         enable_auto_commit=True,
@@ -21,17 +28,46 @@ def start_consumer():
         api_version=(2, 8, 0),
     )
 
-    print("[Order Service] Listening to payment-events and inventory-events...")
+    print("[Order Service] Listening to inventory-events, payment-events and shipping-events...")
 
     for message in consumer:
         event = message.value
         event_type = event.get("event_type")
 
-        if event_type == "PaymentCompleted":
+        if event_type == "InventoryReserved":
+            handle_inventory_reserved(event)
+
+        elif event_type == "PaymentCompleted":
             handle_payment_completed(event)
+
+        elif event_type == "ShippingCreated":
+            handle_shipping_created(event)
 
         elif event_type == "InventoryReleased":
             handle_inventory_released(event)
+
+
+def handle_inventory_reserved(event: dict):
+    db = SessionLocal()
+
+    try:
+        payload = event.get("payload", {})
+        order_id = payload.get("order_id")
+
+        order = db.query(Order).filter(Order.id == order_id).first()
+
+        if order and order.status not in TERMINAL_STATUSES:
+            order.status = OrderStatus.INVENTORY_RESERVED
+            db.commit()
+
+            print(f"[Order Service] Order {order_id} INVENTORY_RESERVED")
+
+    except Exception as error:
+        db.rollback()
+        print(f"[Order Service] Error while marking inventory reserved: {error}")
+
+    finally:
+        db.close()
 
 
 def handle_payment_completed(event: dict):
@@ -43,15 +79,38 @@ def handle_payment_completed(event: dict):
 
         order = db.query(Order).filter(Order.id == order_id).first()
 
-        if order:
-            order.status = "COMPLETED"
+        if order and order.status not in TERMINAL_STATUSES:
+            order.status = OrderStatus.PAYMENT_COMPLETED
+            db.commit()
+
+            print(f"[Order Service] Order {order_id} PAYMENT_COMPLETED")
+
+    except Exception as error:
+        db.rollback()
+        print(f"[Order Service] Error while marking payment completed: {error}")
+
+    finally:
+        db.close()
+
+
+def handle_shipping_created(event: dict):
+    db = SessionLocal()
+
+    try:
+        payload = event.get("payload", {})
+        order_id = payload.get("order_id")
+
+        order = db.query(Order).filter(Order.id == order_id).first()
+
+        if order and order.status not in TERMINAL_STATUSES:
+            order.status = OrderStatus.COMPLETED
             db.commit()
 
             print(f"[Order Service] Order {order_id} COMPLETED")
 
     except Exception as error:
         db.rollback()
-        print(f"[Order Service] Error while completing order: {error}")
+        print(f"[Order Service] Error while completing order after shipping: {error}")
 
     finally:
         db.close()
@@ -69,8 +128,8 @@ def handle_inventory_released(event: dict):
 
         order = db.query(Order).filter(Order.id == order_id).first()
 
-        if order:
-            order.status = "CANCELLED"
+        if order and order.status != OrderStatus.COMPLETED:
+            order.status = OrderStatus.CANCELLED
 
             order_cancelled_event = create_event(
                 event_type="OrderCancelled",
@@ -79,7 +138,7 @@ def handle_inventory_released(event: dict):
                     "order_id": order_id,
                     "product_name": product_name,
                     "quantity": quantity,
-                    "status": "CANCELLED",
+                    "status": OrderStatus.CANCELLED,
                     "reason": "Order cancelled because payment failed and inventory was released.",
                 },
                 correlation_id=event.get("correlation_id"),

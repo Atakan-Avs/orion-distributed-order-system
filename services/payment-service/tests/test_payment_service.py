@@ -1,19 +1,27 @@
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from app.models.outbox_event import Base, OutboxEvent
 from app.services.payment_service import process_payment
 
 
-def test_process_payment_publishes_payment_completed(monkeypatch):
-    published_events = []
+def create_test_db():
+    engine = create_engine("sqlite:///:memory:")
 
-    def fake_publish_event(topic: str, event: dict):
-        published_events.append({
-            "topic": topic,
-            "event": event,
-        })
-
-    monkeypatch.setattr(
-        "app.services.payment_service.publish_event",
-        fake_publish_event,
+    TestingSessionLocal = sessionmaker(
+        bind=engine,
+        autocommit=False,
+        autoflush=False,
     )
+
+    Base.metadata.create_all(bind=engine)
+
+    return TestingSessionLocal
+
+
+def test_process_payment_writes_payment_completed_to_outbox():
+    TestingSessionLocal = create_test_db()
+    db = TestingSessionLocal()
 
     event = {
         "event_id": "inventory-event-001",
@@ -27,37 +35,31 @@ def test_process_payment_publishes_payment_completed(monkeypatch):
         },
     }
 
-    process_payment(event)
+    process_payment(db, event)
+    db.commit()
 
-    assert len(published_events) == 1
-    assert published_events[0]["topic"] == "payment-events"
+    outbox_event = db.query(OutboxEvent).first()
 
-    published_event = published_events[0]["event"]
+    assert outbox_event is not None
+    assert outbox_event.topic == "payment-events"
+    assert outbox_event.event_type == "PaymentCompleted"
 
-    assert published_event["event_type"] == "PaymentCompleted"
-    assert published_event["source"] == "payment-service"
-    assert published_event["correlation_id"] == "correlation-001"
-    assert published_event["causation_id"] == "inventory-event-001"
+    assert outbox_event.payload["event_type"] == "PaymentCompleted"
+    assert outbox_event.payload["source"] == "payment-service"
+    assert outbox_event.payload["correlation_id"] == "correlation-001"
+    assert outbox_event.payload["causation_id"] == "inventory-event-001"
 
-    assert published_event["payload"]["order_id"] == 1
-    assert published_event["payload"]["product_name"] == "Laptop"
-    assert published_event["payload"]["quantity"] == 2
-    assert published_event["payload"]["status"] == "PAID"
+    assert outbox_event.payload["payload"]["order_id"] == 1
+    assert outbox_event.payload["payload"]["product_name"] == "Laptop"
+    assert outbox_event.payload["payload"]["quantity"] == 2
+    assert outbox_event.payload["payload"]["status"] == "PAID"
+
+    db.close()
 
 
-def test_process_payment_publishes_payment_failed_when_quantity_is_greater_than_five(monkeypatch):
-    published_events = []
-
-    def fake_publish_event(topic: str, event: dict):
-        published_events.append({
-            "topic": topic,
-            "event": event,
-        })
-
-    monkeypatch.setattr(
-        "app.services.payment_service.publish_event",
-        fake_publish_event,
-    )
+def test_process_payment_writes_payment_failed_to_outbox_when_quantity_is_greater_than_five():
+    TestingSessionLocal = create_test_db()
+    db = TestingSessionLocal()
 
     event = {
         "event_id": "inventory-event-002",
@@ -71,20 +73,24 @@ def test_process_payment_publishes_payment_failed_when_quantity_is_greater_than_
         },
     }
 
-    process_payment(event)
+    process_payment(db, event)
+    db.commit()
 
-    assert len(published_events) == 1
-    assert published_events[0]["topic"] == "payment-events"
+    outbox_event = db.query(OutboxEvent).first()
 
-    published_event = published_events[0]["event"]
+    assert outbox_event is not None
+    assert outbox_event.topic == "payment-events"
+    assert outbox_event.event_type == "PaymentFailed"
 
-    assert published_event["event_type"] == "PaymentFailed"
-    assert published_event["source"] == "payment-service"
-    assert published_event["correlation_id"] == "correlation-002"
-    assert published_event["causation_id"] == "inventory-event-002"
+    assert outbox_event.payload["event_type"] == "PaymentFailed"
+    assert outbox_event.payload["source"] == "payment-service"
+    assert outbox_event.payload["correlation_id"] == "correlation-002"
+    assert outbox_event.payload["causation_id"] == "inventory-event-002"
 
-    assert published_event["payload"]["order_id"] == 2
-    assert published_event["payload"]["product_name"] == "Laptop"
-    assert published_event["payload"]["quantity"] == 6
-    assert published_event["payload"]["status"] == "PAYMENT_FAILED"
-    assert "reason" in published_event["payload"]
+    assert outbox_event.payload["payload"]["order_id"] == 2
+    assert outbox_event.payload["payload"]["product_name"] == "Laptop"
+    assert outbox_event.payload["payload"]["quantity"] == 6
+    assert outbox_event.payload["payload"]["status"] == "PAYMENT_FAILED"
+    assert "reason" in outbox_event.payload["payload"]
+
+    db.close()
