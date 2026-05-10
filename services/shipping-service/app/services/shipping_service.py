@@ -1,8 +1,8 @@
-from app.events.kafka_producer import publish_event
 from app.core.event_factory import create_event
+from app.models.outbox_event import OutboxEvent
 
 
-def create_shipping(event: dict):
+def create_shipping(db, event: dict):
     print(f"[Shipping Service] PaymentCompleted received: {event}")
 
     payload = event.get("payload", {})
@@ -20,6 +20,12 @@ def create_shipping(event: dict):
         causation_id=event.get("event_id"),
     )
 
-    publish_event("shipping-events", shipping_event)
+    outbox_event = OutboxEvent(
+        topic="shipping-events",
+        event_type="ShippingCreated",
+        payload=shipping_event,
+    )
 
-    print(f"[Shipping Service] ShippingCreated published: {shipping_event}")
+    db.add(outbox_event)
+
+    print(f"[Shipping Service] ShippingCreated added to outbox: {shipping_event}")

@@ -1,10 +1,11 @@
 import json
+
 from kafka import KafkaConsumer
 
 from app.core.config import KAFKA_BOOTSTRAP_SERVERS
 from app.db.database import SessionLocal
-from app.services.shipping_service import create_shipping
 from app.services.idempotency_service import is_event_processed, mark_event_processed
+from app.services.shipping_service import create_shipping
 
 
 def start_consumer():
@@ -40,13 +41,15 @@ def start_consumer():
                 print(f"[Shipping Service] Duplicate event skipped: {event_id}")
                 continue
 
-            create_shipping(event)
+            create_shipping(db, event)
 
             mark_event_processed(
                 db=db,
                 event_id=event_id,
                 event_type=event_type,
             )
+
+            db.commit()
 
         except Exception as error:
             db.rollback()
