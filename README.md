@@ -1,59 +1,136 @@
-# ORION - Distributed Order System 🚀
+# Orion Distributed Order System
 
-ORION is a production-oriented distributed order management system that demonstrates a real-world microservices architecture using the Saga pattern and event-driven communication.
+Production-oriented distributed order processing system built with Python, FastAPI, Kafka, PostgreSQL, Docker, and Saga architecture.
 
-This project showcases how scalable backend systems are designed in production environments.
-
----
-
-## 🧠 Architecture Overview
-
-- Fully event-driven architecture (no direct service-to-service HTTP calls)
-- Asynchronous communication via Kafka
-- Saga pattern for distributed transaction management
-- Each service is isolated and independently executable
-- Designed for scalability, resilience and loose coupling
+This project focuses on real-world distributed systems concepts such as asynchronous communication, reliable event publishing, compensation flows, idempotent consumers, and failure recovery.
 
 ---
 
-## ⚙️ Tech Stack
+# Architecture Overview
 
-- FastAPI
-- PostgreSQL
-- Kafka
-- Redis
-- Docker Compose
-- SQLAlchemy
-- Python
-- Pytest
+```text
+Order Service
+    ↓
+Kafka: OrderCreated
+    ↓
+Inventory Service
+    ↓
+Kafka: InventoryReserved
+    ↓
+Payment Service
+    ↓
+PaymentCompleted OR PaymentFailed
+    ↓
+Inventory Compensation Flow
+    ↓
+Kafka: InventoryReleased
+    ↓
+Order Service Compensation
+    ↓
+Kafka: OrderCancelled
+```
 
 ---
 
-## 🧩 Services
+# Tech Stack
 
-- **order-service** → creates orders and starts the Saga
-- **inventory-service** → reserves stock and releases inventory on failure
-- **payment-service** → processes payment and can fail
-- **shipping-service** → creates shipment
-- **notification-service** → sends success and cancellation notifications
+## Backend
+
+* Python
+* FastAPI
+* SQLAlchemy
+* PostgreSQL
+
+## Messaging
+
+* Apache Kafka
+* Event-driven architecture
+* Saga orchestration flow
+
+## Infrastructure
+
+* Docker
+* Docker Compose
+
+## Reliability Patterns
+
+* Transactional Outbox Pattern
+* Idempotent Consumer Pattern
+* Retry Mechanism
+* Failed Event Recovery
+* Compensation Transactions
 
 ---
 
-## 🔁 Saga Flow
+# Services
 
-### ✅ Successful Flow
+## Order Service
+
+Responsibilities:
+
+* Create orders
+* Publish OrderCreated events
+* Handle compensation events
+* Mark orders as COMPLETED or CANCELLED
+
+Key Features:
+
+* Transactional Outbox
+* Reliable event publishing
+* Compensation handling
+* Correlation/Causation ID support
+
+---
+
+## Inventory Service
+
+Responsibilities:
+
+* Reserve inventory
+* Release inventory on payment failure
+* Publish inventory events
+
+Key Features:
+
+* Transactional Outbox
+* Idempotent event consumption
+* Compensation flow support
+* Retry & failed event handling
+
+---
+
+## Payment Service
+
+Responsibilities:
+
+* Process payments
+* Publish PaymentCompleted or PaymentFailed events
+
+Key Features:
+
+* Transactional Outbox
+* Idempotent consumer
+* Failure simulation support
+* Retry & recovery handling
+
+---
+
+# Distributed Systems Features
+
+## Saga Pattern
+
+The system uses asynchronous Saga orchestration between services.
+
+Successful Flow:
 
 ```text
 OrderCreated
 → InventoryReserved
 → PaymentCompleted
-→ ShippingCreated
-→ NotificationSent
+→ Order COMPLETED
 ```
 
----
-
-### ❌ Compensation Flow (Payment Failure)
+Compensation Flow:
 
 ```text
 OrderCreated
@@ -61,226 +138,223 @@ OrderCreated
 → PaymentFailed
 → InventoryReleased
 → OrderCancelled
-→ CancellationNotificationSent
 ```
 
 ---
 
-Detailed flow: `docs/saga-flow.md`
+## Transactional Outbox Pattern
+
+Implemented in:
+
+* order-service
+* inventory-service
+* payment-service
+
+Instead of publishing directly to Kafka:
+
+```text
+Business Event
+→ Database Outbox Table
+→ Background Publisher
+→ Kafka
+```
+
+Benefits:
+
+* Prevents lost events
+* Reliable async publishing
+* Eventual consistency support
+* Recovery after Kafka outages
 
 ---
 
-## ▶️ How to Run
+## Retry Mechanism
 
-### 1. Start infrastructure
+Outbox publishers automatically retry failed Kafka publishes.
+
+Features:
+
+* Retry count tracking
+* Failed state management
+* Last error persistence
+* Recovery after Kafka restart
+
+---
+
+## Failed Event Recovery
+
+The system supports manual recovery for failed outbox events.
+
+Features:
+
+* Failed event listing endpoint
+* Manual retry endpoint
+* Persistent failure tracking
+
+Example:
+
+```text
+POST /outbox/{event_id}/retry
+```
+
+---
+
+## Idempotent Consumers
+
+Consumers store processed event IDs to prevent duplicate event processing.
+
+Benefits:
+
+* Prevents duplicate business operations
+* Safe Kafka reprocessing
+* Reliable distributed event handling
+
+---
+
+## Correlation & Causation IDs
+
+Every event contains:
+
+* correlation_id
+* causation_id
+
+This enables:
+
+* Distributed tracing
+* Event chain tracking
+* Debugging across services
+
+---
+
+# Project Structure
+
+```text
+orion-distributed-order-system/
+│
+├── infra/
+│   └── docker-compose.yml
+│
+├── services/
+│   ├── order-service/
+│   ├── inventory-service/
+│   ├── payment-service/
+│   ├── shipping-service/
+│   └── notification-service/
+│
+└── docs/
+```
+
+---
+
+# Running the Project
+
+## 1. Start Infrastructure
 
 ```bash
-cd infra
-docker compose up -d
+docker compose up
 ```
 
 ---
 
-### 2. Start services (each in separate terminal)
+## 2. Start Services
 
-#### Order Service
+### Order Service
 
 ```bash
 cd services/order-service
 uvicorn app.main:app --reload
 ```
 
-#### Inventory Service
+### Inventory Service
 
 ```bash
 cd services/inventory-service
 python -m app.main
 ```
 
-#### Payment Service
+### Payment Service
 
 ```bash
 cd services/payment-service
 python -m app.main
 ```
 
-#### Shipping Service
-
-```bash
-cd services/shipping-service
-python -m app.main
-```
-
-#### Notification Service
-
-```bash
-cd services/notification-service
-python -m app.main
-```
-
 ---
 
-### 3. Test API
-
-Swagger UI:
+# Swagger API
 
 ```text
 http://127.0.0.1:8000/docs
 ```
 
-Example request:
-
-```json
-{
-  "product_name": "Laptop",
-  "quantity": 6
-}
-```
-
 ---
 
-## 🧪 Testing
+# Failure Simulation
 
-### Unit Tests
-
-The project includes unit tests for:
-
-- Payment success and failure flows
-- Inventory reservation and release logic
-- Order completion and cancellation handling
-- Notification creation logic
-
-### Integration Tests
-
-Integration tests validate the complete Saga workflow across services:
-
-- Successful order processing flow
-- Compensation flow on payment failure
-
-Run all integration tests:
-
-```bash
-pytest tests
-```
-
----
-
-## 🏗️ Architecture Highlights
-
-- Event-driven communication using Kafka
-- Saga pattern for distributed transactions
-- Decoupled services with asynchronous workflows
-- Independently deployable service structure
-- Designed for scalability and fault tolerance
-
----
-
-## 🛡️ Reliability Features
-
-- Standardized event envelope across all services
-- Correlation ID support for distributed tracing
-- Causation ID for event lineage tracking
-- Idempotent event processing implemented in all services
-- Duplicate events are safely detected and skipped
-- Processed events are persisted in PostgreSQL
-- Compensation (rollback) mechanism for failed transactions
-- Event-driven state transitions between services
-
----
-
-## 🧠 Design Decisions
-
-- Chose event-driven architecture over synchronous HTTP to reduce coupling
-- Implemented Saga pattern to manage distributed transactions without central coordination
-- Used Kafka for reliable event streaming and asynchronous processing
-- Designed services as independently executable units
-
----
-
-## ⚖️ Trade-offs
-
-- Eventual consistency instead of strong consistency
-- Increased complexity due to microservices architecture
-- Requires proper monitoring and observability in real-world systems
-
----
-
-## ⚡ Key Concepts Demonstrated
-
-- Distributed system design
-- Event-driven architecture
-- Service decoupling
-- Eventually consistent systems
-- Message-based communication
-- Idempotency handling
-- Saga compensation (rollback) pattern
-- Integration testing for distributed workflows
-
----
-
-## 🧪 Idempotency Test
-
-Duplicate events can be tested by publishing the same `event_id` multiple times to Kafka topics.
-
-Expected behavior:
-
-- First event is processed successfully
-- Second event with the same `event_id` is skipped
-- Event processing is recorded in PostgreSQL
-
----
-
-## 🚧 Current Limitations
-
-- No retry mechanism implemented
-- No dead letter queue (DLQ)
-- No centralized logging
-- No distributed tracing system (e.g., OpenTelemetry)
-
----
-
-## 🚀 Future Improvements
-
-- Retry mechanisms and DLQ
-- Transactional Outbox Pattern
-- Observability (Prometheus + Grafana)
-- Distributed tracing (OpenTelemetry)
-- CI/CD pipeline integration
-- Kubernetes deployment support
-
----
-
-## 📦 Project Structure
+The payment service intentionally fails payments when:
 
 ```text
-services/
-  ├── order-service/
-  ├── inventory-service/
-  ├── payment-service/
-  ├── shipping-service/
-  └── notification-service/
-
-infra/
-  └── docker-compose.yml
-
-docs/
-  └── saga-flow.md
-
-tests/
-  └── integration tests
+quantity > 5
 ```
 
----
+This allows testing:
 
-## 👨‍💻 Author
-
-**Atakan Avsever**
-
-- GitHub: https://github.com/Atakan-Avs
-- LinkedIn: https://linkedin.com/in/atakanavsever
+* Saga compensation
+* Inventory release flow
+* Order cancellation flow
+* Outbox retry & recovery
 
 ---
 
-## ⭐️ Notes
+# Reliability Testing Performed
 
-This project is built as a portfolio-level backend system to demonstrate production-grade distributed architecture concepts including Saga orchestration, compensation transactions, idempotent event processing, and integration testing for asynchronous workflows.
+Tested scenarios:
+
+* Kafka outage simulation
+* Automatic retry handling
+* Failed event persistence
+* Manual event recovery
+* Compensation flow execution
+* Idempotent consumer validation
+* Event replay safety
+
+---
+
+# Future Improvements
+
+Potential next steps:
+
+* Dead Letter Queue (DLQ)
+* Inbox Pattern
+* Distributed tracing with OpenTelemetry
+* Prometheus metrics
+* Grafana dashboards
+* Kafka manual offset management
+* Saga state persistence
+* Kubernetes deployment
+* CI/CD pipeline
+
+---
+
+# Learning Goals
+
+This project was built to deeply understand:
+
+* Distributed systems
+* Event-driven architecture
+* Saga pattern
+* Reliable asynchronous communication
+* Failure recovery strategies
+* Production-oriented backend design
+
+---
+
+# Author
+
+Atakan Avsever
+
+GitHub:
+[https://github.com/Atakan-Avs](https://github.com/Atakan-Avs)
+
+LinkedIn:
+[https://linkedin.com/in/atakanavsever](https://linkedin.com/in/atakanavsever)
