@@ -40,6 +40,7 @@ app.dependency_overrides[get_db] = override_get_db
 
 
 def test_list_failed_outbox_events_returns_only_failed_events():
+    app.dependency_overrides[get_db] = override_get_db
     db = TestingSessionLocal()
 
     db.query(OutboxEvent).delete()
@@ -82,6 +83,7 @@ def test_list_failed_outbox_events_returns_only_failed_events():
 
 
 def test_retry_outbox_event_resets_failed_state():
+    app.dependency_overrides[get_db] = override_get_db
     db = TestingSessionLocal()
 
     db.query(OutboxEvent).delete()
