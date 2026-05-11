@@ -75,3 +75,10 @@ def metrics(db: Session = Depends(get_db)):
         content=metrics_text,
         media_type="text/plain",
     )
+    
+@router.get("/health")
+def health_check():
+    return {
+        "service": "order-service",
+        "status": "ok",
+    }
