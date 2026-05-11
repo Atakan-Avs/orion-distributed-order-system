@@ -5,8 +5,16 @@ from app.models.order import Order
 from app.models.outbox_event import OutboxEvent
 
 
-def create_order(db: Session, product_name: str, quantity: int):
-    order = Order(product_name=product_name, quantity=quantity)
+def create_order(
+    db: Session,
+    product_name: str,
+    quantity: int,
+    correlation_id: str,
+):
+    order = Order(
+        product_name=product_name,
+        quantity=quantity,
+    )
 
     db.add(order)
     db.flush()
@@ -20,6 +28,7 @@ def create_order(db: Session, product_name: str, quantity: int):
             "quantity": order.quantity,
             "status": order.status,
         },
+        correlation_id=correlation_id,
     )
 
     outbox_event = OutboxEvent(
@@ -29,6 +38,7 @@ def create_order(db: Session, product_name: str, quantity: int):
     )
 
     db.add(outbox_event)
+
     db.commit()
     db.refresh(order)
 

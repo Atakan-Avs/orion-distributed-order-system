@@ -15,7 +15,7 @@ def create_event(
         "version": 1,
         "occurred_at": datetime.utcnow().isoformat(),
         "source": source,
-        "correlation_id": correlation_id or str(uuid.uuid4()),
+        "correlation_id": correlation_id,
         "causation_id": causation_id,
         "payload": payload,
     }

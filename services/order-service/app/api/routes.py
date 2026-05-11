@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response,Request
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
@@ -22,8 +22,17 @@ def get_db():
 
 
 @router.post("/orders", response_model=OrderResponse)
-def create_order_route(order: OrderCreate, db: Session = Depends(get_db)):
-    return create_order(db, order.product_name, order.quantity)
+def create_order_route(
+    order: OrderCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    return create_order(
+        db=db,
+        product_name=order.product_name,
+        quantity=order.quantity,
+        correlation_id=request.state.correlation_id,
+    )
 
 
 @router.get("/orders", response_model=list[OrderResponse])
