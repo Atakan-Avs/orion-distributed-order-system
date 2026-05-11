@@ -2,7 +2,7 @@
 
 Production-oriented distributed order processing system built with Python, FastAPI, Kafka, PostgreSQL, Docker, and Saga architecture.
 
-This project focuses on real-world distributed systems concepts such as asynchronous communication, reliable event publishing, compensation flows, idempotent consumers, and failure recovery.
+This project focuses on real-world distributed systems concepts such as asynchronous communication, reliable event publishing, compensation flows, idempotent consumers, structured logging, distributed tracing support, and failure recovery.
 
 ---
 
@@ -89,6 +89,9 @@ Key Features:
 * Compensation handling
 * Saga state tracking
 * Correlation/Causation ID support
+* Structured JSON logging
+* Metrics endpoint
+* Health check endpoint
 
 ---
 
@@ -266,13 +269,21 @@ POST /admin/outbox/{event_id}/retry
 
 ## Metrics / Observability
 
-Order Service exposes a Prometheus-style metrics endpoint:
+Order Service exposes Prometheus-style metrics and operational endpoints.
+
+Metrics endpoint:
 
 ```text
 GET /metrics
 ```
 
-Example output:
+Health check endpoint:
+
+```text
+GET /health
+```
+
+Example metrics output:
 
 ```text
 orion_orders_created_total 10
@@ -319,6 +330,55 @@ This enables:
 
 ---
 
+## Structured Logging
+
+Order Service uses structured JSON logs for event processing.
+
+Each important saga transition log includes:
+
+* service name
+* message
+* event_type
+* correlation_id
+* causation_id
+* order_id
+* status
+
+Example log:
+
+```json
+{
+  "timestamp": "2026-05-11T12:00:00+00:00",
+  "service": "order-service",
+  "message": "Order marked as payment completed",
+  "event_type": "PaymentCompleted",
+  "correlation_id": "test-correlation-id-123",
+  "causation_id": "payment-event-001",
+  "order_id": 1,
+  "status": "PAYMENT_COMPLETED"
+}
+```
+
+This makes distributed saga flows easier to debug across services.
+
+---
+
+## Request Correlation ID
+
+Order Service supports request-level correlation IDs.
+
+Clients can pass:
+
+```text
+X-Correlation-ID: custom-correlation-id
+```
+
+If no correlation ID is provided, the service generates one automatically.
+
+The correlation ID is propagated into the `OrderCreated` event and stored in the outbox payload, allowing the full distributed event chain to be traced from the initial HTTP request.
+
+---
+
 # System Guarantees
 
 The system is designed around eventual consistency principles.
@@ -330,6 +390,7 @@ Key guarantees:
 * Compensation-based failure recovery
 * Persistent failed event tracking
 * Manual operational recovery support
+* Distributed request tracing support
 
 ---
 
@@ -459,6 +520,8 @@ Tested scenarios:
 * Idempotent consumer validation
 * Event replay safety
 * Saga state transition validation
+* Correlation ID propagation validation
+* Metrics endpoint validation
 
 ---
 
@@ -468,7 +531,7 @@ Potential next steps:
 
 * Inbox Pattern
 * Distributed tracing with OpenTelemetry
-* Prometheus metrics
+* Prometheus integration
 * Grafana dashboards
 * Kafka manual offset management
 * Kubernetes deployment
@@ -486,6 +549,8 @@ This project was built to deeply understand:
 * Reliable asynchronous communication
 * Failure recovery strategies
 * Production-oriented backend design
+* Distributed tracing concepts
+* Operational observability
 
 ---
 
