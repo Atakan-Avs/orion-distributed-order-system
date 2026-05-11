@@ -59,3 +59,39 @@ def list_failed_outbox_events(db: Session = Depends(get_db)):
         }
         for event in events
     ]
+    
+@router.get("/admin/outbox/failed")
+def list_failed_outbox_events(db: Session = Depends(get_db)):
+    events = get_failed_outbox_events(db)
+
+    return [
+        {
+            "id": event.id,
+            "topic": event.topic,
+            "event_type": event.event_type,
+            "processed": event.processed,
+            "failed": event.failed,
+            "retry_count": event.retry_count,
+            "last_error": event.last_error,
+            "created_at": event.created_at,
+            "failed_at": event.failed_at,
+        }
+        for event in events
+    ]
+
+
+@router.post("/admin/outbox/{event_id}/retry")
+def retry_outbox_event(event_id: int, db: Session = Depends(get_db)):
+    event = retry_failed_outbox_event(db, event_id)
+
+    if event is None:
+        raise HTTPException(status_code=404, detail="Outbox event not found")
+
+    return {
+        "message": "Outbox event retry scheduled",
+        "event_id": event.id,
+        "processed": event.processed,
+        "failed": event.failed,
+        "retry_count": event.retry_count,
+        "last_error": event.last_error,
+    }

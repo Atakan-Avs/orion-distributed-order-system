@@ -3,6 +3,15 @@ from sqlalchemy.orm import Session
 from app.models.outbox_event import OutboxEvent
 
 
+def get_failed_outbox_events(db: Session):
+    return (
+        db.query(OutboxEvent)
+        .filter(OutboxEvent.failed == True)
+        .order_by(OutboxEvent.failed_at.desc())
+        .all()
+    )
+
+
 def retry_failed_outbox_event(db: Session, event_id: int):
     event = db.query(OutboxEvent).filter(OutboxEvent.id == event_id).first()
 
@@ -19,14 +28,5 @@ def retry_failed_outbox_event(db: Session, event_id: int):
 
     db.commit()
     db.refresh(event)
-    
+
     return event
-
-
-def get_failed_outbox_events(db: Session):
-    return (
-        db.query(OutboxEvent)
-        .filter(OutboxEvent.failed == True)
-        .order_by(OutboxEvent.failed_at.desc())
-        .all()
-    )
