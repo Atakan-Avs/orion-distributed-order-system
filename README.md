@@ -19,15 +19,23 @@ Kafka: InventoryReserved
     ↓
 Payment Service
     ↓
-PaymentCompleted OR PaymentFailed
+Kafka: PaymentCompleted OR PaymentFailed
     ↓
-Inventory Compensation Flow
+Shipping Service
     ↓
-Kafka: InventoryReleased
+Kafka: ShippingCreated
     ↓
-Order Service Compensation
-    ↓
-Kafka: OrderCancelled
+Order COMPLETED
+```
+
+Compensation Flow:
+
+```text
+OrderCreated
+→ InventoryReserved
+→ PaymentFailed
+→ InventoryReleased
+→ OrderCancelled
 ```
 
 ---
@@ -70,6 +78,7 @@ Responsibilities:
 
 * Create orders
 * Publish OrderCreated events
+* Track saga state transitions
 * Handle compensation events
 * Mark orders as COMPLETED or CANCELLED
 
@@ -78,6 +87,7 @@ Key Features:
 * Transactional Outbox
 * Reliable event publishing
 * Compensation handling
+* Saga state tracking
 * Correlation/Causation ID support
 
 ---
@@ -115,6 +125,36 @@ Key Features:
 
 ---
 
+## Shipping Service
+
+Responsibilities:
+
+* Create shipment records
+* Publish ShippingCreated events
+* Complete successful saga flows
+
+Key Features:
+
+* Transactional Outbox
+* Idempotent consumer support
+* Final saga completion handling
+
+---
+
+## Notification Service
+
+Responsibilities:
+
+* Consume order lifecycle events
+* Simulate asynchronous notifications
+
+Key Features:
+
+* Event-driven notification flow
+* Kafka consumer architecture
+
+---
+
 # Distributed Systems Features
 
 ## Saga Pattern
@@ -127,6 +167,7 @@ Successful Flow:
 OrderCreated
 → InventoryReserved
 → PaymentCompleted
+→ ShippingCreated
 → Order COMPLETED
 ```
 
@@ -142,6 +183,28 @@ OrderCreated
 
 ---
 
+## Saga State Tracking
+
+Orders move through explicit distributed saga states:
+
+```text
+PENDING
+→ INVENTORY_RESERVED
+→ PAYMENT_COMPLETED
+→ COMPLETED
+```
+
+Failure flow:
+
+```text
+PENDING / INVENTORY_RESERVED
+→ CANCELLED
+```
+
+This improves observability and operational debugging of distributed workflows.
+
+---
+
 ## Transactional Outbox Pattern
 
 Implemented in:
@@ -149,6 +212,7 @@ Implemented in:
 * order-service
 * inventory-service
 * payment-service
+* shipping-service
 
 Instead of publishing directly to Kafka:
 
@@ -191,10 +255,11 @@ Features:
 * Manual retry endpoint
 * Persistent failure tracking
 
-Example:
+Endpoints:
 
 ```text
-POST /outbox/{event_id}/retry
+GET  /admin/outbox/failed
+POST /admin/outbox/{event_id}/retry
 ```
 
 ---
@@ -226,6 +291,20 @@ This enables:
 
 ---
 
+# System Guarantees
+
+The system is designed around eventual consistency principles.
+
+Key guarantees:
+
+* Reliable event publishing with Transactional Outbox
+* Duplicate event protection with Idempotent Consumers
+* Compensation-based failure recovery
+* Persistent failed event tracking
+* Manual operational recovery support
+
+---
+
 # Project Structure
 
 ```text
@@ -241,6 +320,8 @@ orion-distributed-order-system/
 │   ├── shipping-service/
 │   └── notification-service/
 │
+├── tests/
+│
 └── docs/
 ```
 
@@ -251,7 +332,7 @@ orion-distributed-order-system/
 ## 1. Start Infrastructure
 
 ```bash
-docker compose up
+docker compose up --build
 ```
 
 ---
@@ -279,12 +360,44 @@ cd services/payment-service
 python -m app.main
 ```
 
+### Shipping Service
+
+```bash
+cd services/shipping-service
+python -m app.main
+```
+
+### Notification Service
+
+```bash
+cd services/notification-service
+python -m app.main
+```
+
 ---
 
 # Swagger API
 
 ```text
 http://127.0.0.1:8000/docs
+```
+
+---
+
+# Integration Testing
+
+Integration tests require running infrastructure and services.
+
+Start containers first:
+
+```bash
+docker compose up
+```
+
+Then run:
+
+```bash
+pytest tests/test_order_saga_integration.py
 ```
 
 ---
@@ -317,6 +430,7 @@ Tested scenarios:
 * Compensation flow execution
 * Idempotent consumer validation
 * Event replay safety
+* Saga state transition validation
 
 ---
 
@@ -324,13 +438,11 @@ Tested scenarios:
 
 Potential next steps:
 
-* Dead Letter Queue (DLQ)
 * Inbox Pattern
 * Distributed tracing with OpenTelemetry
 * Prometheus metrics
 * Grafana dashboards
 * Kafka manual offset management
-* Saga state persistence
 * Kubernetes deployment
 * CI/CD pipeline
 
@@ -354,7 +466,7 @@ This project was built to deeply understand:
 Atakan Avsever
 
 GitHub:
-[https://github.com/Atakan-Avs](https://github.com/Atakan-Avs)
+https://github.com/Atakan-Avs
 
 LinkedIn:
-[https://linkedin.com/in/atakanavsever](https://linkedin.com/in/atakanavsever)
+https://linkedin.com/in/atakanavsever
