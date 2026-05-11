@@ -264,6 +264,34 @@ POST /admin/outbox/{event_id}/retry
 
 ---
 
+## Metrics / Observability
+
+Order Service exposes a Prometheus-style metrics endpoint:
+
+```text
+GET /metrics
+```
+
+Example output:
+
+```text
+orion_orders_created_total 10
+orion_saga_completed_total 7
+orion_saga_cancelled_total 2
+orion_outbox_pending_total 1
+orion_outbox_failed_total 0
+```
+
+These metrics help monitor:
+
+* Total created orders
+* Completed saga flows
+* Cancelled saga flows
+* Pending outbox events
+* Failed outbox events
+
+---
+
 ## Idempotent Consumers
 
 Consumers store processed event IDs to prevent duplicate event processing.
