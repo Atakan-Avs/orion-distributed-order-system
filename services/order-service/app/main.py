@@ -8,8 +8,10 @@ from app.events.kafka_consumer import start_consumer
 from app.events.outbox_publisher import start_outbox_publisher
 from app.models.order import Base
 from app.models.outbox_event import OutboxEvent
+from app.middleware.correlation import CorrelationIdMiddleware
 
 app = FastAPI(title="Order Service")
+app.add_middleware(CorrelationIdMiddleware)
 
 Base.metadata.create_all(bind=engine)
 
