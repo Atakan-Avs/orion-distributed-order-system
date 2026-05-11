@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 
 def create_event(
@@ -13,7 +13,7 @@ def create_event(
         "event_id": str(uuid.uuid4()),
         "event_type": event_type,
         "version": 1,
-        "occurred_at": datetime.utcnow().isoformat(),
+        "occurred_at": datetime.now(UTC).isoformat(),
         "source": source,
         "correlation_id": correlation_id,
         "causation_id": causation_id,

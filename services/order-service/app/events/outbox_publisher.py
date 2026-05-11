@@ -37,8 +37,8 @@ def start_outbox_publisher():
         try:
             events = (
                 db.query(OutboxEvent)
-                .filter(OutboxEvent.processed == False)
-                .filter(OutboxEvent.failed == False)
+                .filter(OutboxEvent.processed.is_(False))
+                .filter(OutboxEvent.failed.is_(False))
                 .order_by(OutboxEvent.created_at.asc())
                 .limit(10)
                 .all()

@@ -1,5 +1,5 @@
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 
 from app.db.database import SessionLocal
 from app.events.kafka_producer import publish_event
@@ -16,7 +16,7 @@ def publish_to_dlq(event: OutboxEvent, error: Exception):
         "event_type": event.event_type,
         "payload": event.payload,
         "error": str(error),
-        "failed_at": datetime.utcnow().isoformat(),
+        "failed_at": datetime.now(UTC).isoformat(),
         "retry_count": event.retry_count,
     }
 
@@ -49,7 +49,7 @@ def start_outbox_publisher():
                     publish_event(event.topic, event.payload)
 
                     event.processed = True
-                    event.processed_at = datetime.utcnow()
+                    event.processed_at = datetime.now(UTC)
                     event.last_error = None
 
                     print(
@@ -77,7 +77,7 @@ def start_outbox_publisher():
                             )
 
                         event.failed = True
-                        event.failed_at = datetime.utcnow()
+                        event.failed_at = datetime.now(UTC)
 
                         print(
                             f"[Shipping Outbox Publisher] Event moved to failed state. "

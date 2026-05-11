@@ -21,14 +21,14 @@ def get_order_metrics(db: Session) -> str:
 
     outbox_pending_total = (
         db.query(OutboxEvent)
-        .filter(OutboxEvent.processed == False)
-        .filter(OutboxEvent.failed == False)
+        .filter(OutboxEvent.processed.is_(False))
+        .filter(OutboxEvent.failed.is_(False))
         .count()
     )
 
     outbox_failed_total = (
         db.query(OutboxEvent)
-        .filter(OutboxEvent.failed == True)
+        .filter(OutboxEvent.failed.is_(True))
         .count()
     )
 
