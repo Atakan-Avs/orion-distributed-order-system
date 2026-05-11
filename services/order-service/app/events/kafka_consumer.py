@@ -4,6 +4,7 @@ from kafka import KafkaConsumer
 
 from app.core.config import KAFKA_BOOTSTRAP_SERVERS
 from app.core.event_factory import create_event
+from app.core.logger import log_event
 from app.db.session import SessionLocal
 from app.models.order import Order, OrderStatus
 from app.models.outbox_event import OutboxEvent
@@ -28,7 +29,14 @@ def start_consumer():
         api_version=(2, 8, 0),
     )
 
-    print("[Order Service] Listening to inventory-events, payment-events and shipping-events...")
+    log_event(
+        "Order service consumer started",
+        topics=[
+            "inventory-events",
+            "payment-events",
+            "shipping-events",
+        ],
+    )
 
     for message in consumer:
         event = message.value
@@ -60,11 +68,24 @@ def handle_inventory_reserved(event: dict):
             order.status = OrderStatus.INVENTORY_RESERVED
             db.commit()
 
-            print(f"[Order Service] Order {order_id} INVENTORY_RESERVED")
+            log_event(
+                "Order inventory reserved",
+                event_type=event.get("event_type"),
+                correlation_id=event.get("correlation_id"),
+                causation_id=event.get("event_id"),
+                order_id=order_id,
+                status=OrderStatus.INVENTORY_RESERVED,
+            )
 
     except Exception as error:
         db.rollback()
-        print(f"[Order Service] Error while marking inventory reserved: {error}")
+
+        log_event(
+            "Error while marking inventory reserved",
+            error=str(error),
+            event_type=event.get("event_type"),
+            correlation_id=event.get("correlation_id"),
+        )
 
     finally:
         db.close()
@@ -83,11 +104,24 @@ def handle_payment_completed(event: dict):
             order.status = OrderStatus.PAYMENT_COMPLETED
             db.commit()
 
-            print(f"[Order Service] Order {order_id} PAYMENT_COMPLETED")
+            log_event(
+                "Order marked as payment completed",
+                event_type=event.get("event_type"),
+                correlation_id=event.get("correlation_id"),
+                causation_id=event.get("event_id"),
+                order_id=order_id,
+                status=OrderStatus.PAYMENT_COMPLETED,
+            )
 
     except Exception as error:
         db.rollback()
-        print(f"[Order Service] Error while marking payment completed: {error}")
+
+        log_event(
+            "Error while marking payment completed",
+            error=str(error),
+            event_type=event.get("event_type"),
+            correlation_id=event.get("correlation_id"),
+        )
 
     finally:
         db.close()
@@ -106,11 +140,24 @@ def handle_shipping_created(event: dict):
             order.status = OrderStatus.COMPLETED
             db.commit()
 
-            print(f"[Order Service] Order {order_id} COMPLETED")
+            log_event(
+                "Order marked as completed after shipping",
+                event_type=event.get("event_type"),
+                correlation_id=event.get("correlation_id"),
+                causation_id=event.get("event_id"),
+                order_id=order_id,
+                status=OrderStatus.COMPLETED,
+            )
 
     except Exception as error:
         db.rollback()
-        print(f"[Order Service] Error while completing order after shipping: {error}")
+
+        log_event(
+            "Error while completing order after shipping",
+            error=str(error),
+            event_type=event.get("event_type"),
+            correlation_id=event.get("correlation_id"),
+        )
 
     finally:
         db.close()
@@ -139,7 +186,10 @@ def handle_inventory_released(event: dict):
                     "product_name": product_name,
                     "quantity": quantity,
                     "status": OrderStatus.CANCELLED,
-                    "reason": "Order cancelled because payment failed and inventory was released.",
+                    "reason": (
+                        "Order cancelled because payment failed "
+                        "and inventory was released."
+                    ),
                 },
                 correlation_id=event.get("correlation_id"),
                 causation_id=event.get("event_id"),
@@ -154,12 +204,32 @@ def handle_inventory_released(event: dict):
             db.add(outbox_event)
             db.commit()
 
-            print(f"[Order Service] Order {order_id} CANCELLED due to payment failure")
-            print(f"[Order Service] OrderCancelled added to outbox: {order_cancelled_event}")
+            log_event(
+                "Order cancelled after compensation flow",
+                event_type=event.get("event_type"),
+                correlation_id=event.get("correlation_id"),
+                causation_id=event.get("event_id"),
+                order_id=order_id,
+                status=OrderStatus.CANCELLED,
+            )
+
+            log_event(
+                "OrderCancelled event added to outbox",
+                event_type="OrderCancelled",
+                correlation_id=event.get("correlation_id"),
+                order_id=order_id,
+                outbox_topic="order-events",
+            )
 
     except Exception as error:
         db.rollback()
-        print(f"[Order Service] Error while cancelling order: {error}")
+
+        log_event(
+            "Error while cancelling order",
+            error=str(error),
+            event_type=event.get("event_type"),
+            correlation_id=event.get("correlation_id"),
+        )
 
     finally:
         db.close()
