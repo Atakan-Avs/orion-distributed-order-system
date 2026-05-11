@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
 from app.schemas.order import OrderCreate, OrderResponse
+from app.services.metrics_service import get_order_metrics
 from app.services.order_service import create_order, get_orders
 from app.services.outbox_service import (
     get_failed_outbox_events,
@@ -65,3 +66,12 @@ def retry_outbox_event(event_id: int, db: Session = Depends(get_db)):
         "retry_count": event.retry_count,
         "last_error": event.last_error,
     }
+    
+@router.get("/metrics")
+def metrics(db: Session = Depends(get_db)):
+    metrics_text = get_order_metrics(db)
+
+    return Response(
+        content=metrics_text,
+        media_type="text/plain",
+    )
