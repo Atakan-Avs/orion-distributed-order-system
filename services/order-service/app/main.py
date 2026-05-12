@@ -4,17 +4,13 @@ from threading import Thread
 from fastapi import FastAPI
 
 from app.api.routes import router
-from app.db.session import engine
 from app.events.kafka_consumer import start_consumer
 from app.events.outbox_publisher import start_outbox_publisher
 from app.middleware.correlation import CorrelationIdMiddleware
-from app.models.order import Base
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    Base.metadata.create_all(bind=engine)
-
     consumer_thread = Thread(target=start_consumer, daemon=True)
     consumer_thread.start()
 
