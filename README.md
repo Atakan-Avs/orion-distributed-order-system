@@ -2,30 +2,45 @@
 
 Production-oriented distributed order processing system built with Python, FastAPI, Kafka, PostgreSQL, Docker, and Saga architecture.
 
-This project focuses on real-world distributed systems concepts such as asynchronous communication, reliable event publishing, compensation flows, idempotent consumers, structured logging, distributed tracing support, and failure recovery.
+This project focuses on real-world distributed systems concepts such as asynchronous communication, reliable event publishing, compensation flows, idempotent consumers, structured logging, distributed tracing support, schema migration management, and failure recovery.
 
 ---
 
 # Architecture Overview
 
 ```text
+Client
+  |
+  v
 Order Service
-    ↓
-Kafka: OrderCreated
-    ↓
+  |
+  | OrderCreated
+  v
+Kafka
+  |
+  v
 Inventory Service
-    ↓
-Kafka: InventoryReserved
-    ↓
+  |
+  | InventoryReserved
+  v
+Kafka
+  |
+  v
 Payment Service
-    ↓
-Kafka: PaymentCompleted OR PaymentFailed
-    ↓
+  |
+  | PaymentCompleted / PaymentFailed
+  v
+Kafka
+  |
+  v
 Shipping Service
-    ↓
-Kafka: ShippingCreated
-    ↓
-Order COMPLETED
+  |
+  | ShippingStarted / ShippingFailed
+  v
+Kafka
+  |
+  v
+Notification Service
 ```
 
 Compensation Flow:
@@ -44,29 +59,30 @@ OrderCreated
 
 ## Backend
 
-* Python
-* FastAPI
-* SQLAlchemy
-* PostgreSQL
+- Python
+- FastAPI
+- SQLAlchemy
+- PostgreSQL
+- Alembic
 
 ## Messaging
 
-* Apache Kafka
-* Event-driven architecture
-* Saga orchestration flow
+- Apache Kafka
+- Event-driven architecture
+- Saga choreography flow
 
 ## Infrastructure
 
-* Docker
-* Docker Compose
+- Docker
+- Docker Compose
 
 ## Reliability Patterns
 
-* Transactional Outbox Pattern
-* Idempotent Consumer Pattern
-* Retry Mechanism
-* Failed Event Recovery
-* Compensation Transactions
+- Transactional Outbox Pattern
+- Idempotent Consumer Pattern
+- Retry Mechanism
+- Failed Event Recovery
+- Compensation Transactions
 
 ---
 
@@ -76,22 +92,23 @@ OrderCreated
 
 Responsibilities:
 
-* Create orders
-* Publish OrderCreated events
-* Track saga state transitions
-* Handle compensation events
-* Mark orders as COMPLETED or CANCELLED
+- Create orders
+- Publish OrderCreated events
+- Track saga state transitions
+- Handle compensation events
+- Mark orders as COMPLETED or CANCELLED
 
 Key Features:
 
-* Transactional Outbox
-* Reliable event publishing
-* Compensation handling
-* Saga state tracking
-* Correlation/Causation ID support
-* Structured JSON logging
-* Metrics endpoint
-* Health check endpoint
+- Transactional Outbox
+- Reliable event publishing
+- Compensation handling
+- Saga state tracking
+- Correlation/Causation ID support
+- Structured JSON logging
+- Metrics endpoint
+- Health check endpoint
+- Alembic migrations
 
 ---
 
@@ -99,16 +116,17 @@ Key Features:
 
 Responsibilities:
 
-* Reserve inventory
-* Release inventory on payment failure
-* Publish inventory events
+- Reserve inventory
+- Release inventory on payment failure
+- Publish inventory events
 
 Key Features:
 
-* Transactional Outbox
-* Idempotent event consumption
-* Compensation flow support
-* Retry & failed event handling
+- Transactional Outbox
+- Idempotent event consumption
+- Compensation flow support
+- Retry & failed event handling
+- Alembic migrations
 
 ---
 
@@ -116,15 +134,16 @@ Key Features:
 
 Responsibilities:
 
-* Process payments
-* Publish PaymentCompleted or PaymentFailed events
+- Process payments
+- Publish PaymentCompleted or PaymentFailed events
 
 Key Features:
 
-* Transactional Outbox
-* Idempotent consumer
-* Failure simulation support
-* Retry & recovery handling
+- Transactional Outbox
+- Idempotent consumer
+- Failure simulation support
+- Retry & recovery handling
+- Alembic migrations
 
 ---
 
@@ -132,15 +151,16 @@ Key Features:
 
 Responsibilities:
 
-* Create shipment records
-* Publish ShippingCreated events
-* Complete successful saga flows
+- Create shipment records
+- Publish ShippingStarted events
+- Complete successful saga flows
 
 Key Features:
 
-* Transactional Outbox
-* Idempotent consumer support
-* Final saga completion handling
+- Transactional Outbox
+- Idempotent consumer support
+- Final saga completion handling
+- Alembic migrations
 
 ---
 
@@ -148,13 +168,14 @@ Key Features:
 
 Responsibilities:
 
-* Consume order lifecycle events
-* Simulate asynchronous notifications
+- Consume order lifecycle events
+- Simulate asynchronous notifications
 
 Key Features:
 
-* Event-driven notification flow
-* Kafka consumer architecture
+- Event-driven notification flow
+- Kafka consumer architecture
+- Alembic migrations
 
 ---
 
@@ -162,7 +183,7 @@ Key Features:
 
 ## Saga Pattern
 
-The system uses asynchronous Saga orchestration between services.
+The system uses asynchronous Saga choreography between services.
 
 Successful Flow:
 
@@ -170,8 +191,8 @@ Successful Flow:
 OrderCreated
 → InventoryReserved
 → PaymentCompleted
-→ ShippingCreated
-→ Order COMPLETED
+→ ShippingStarted
+→ NotificationSent
 ```
 
 Compensation Flow:
@@ -212,10 +233,10 @@ This improves observability and operational debugging of distributed workflows.
 
 Implemented in:
 
-* order-service
-* inventory-service
-* payment-service
-* shipping-service
+- order-service
+- inventory-service
+- payment-service
+- shipping-service
 
 Instead of publishing directly to Kafka:
 
@@ -228,10 +249,10 @@ Business Event
 
 Benefits:
 
-* Prevents lost events
-* Reliable async publishing
-* Eventual consistency support
-* Recovery after Kafka outages
+- Prevents lost events
+- Reliable async publishing
+- Eventual consistency support
+- Recovery after Kafka outages
 
 ---
 
@@ -241,10 +262,10 @@ Outbox publishers automatically retry failed Kafka publishes.
 
 Features:
 
-* Retry count tracking
-* Failed state management
-* Last error persistence
-* Recovery after Kafka restart
+- Retry count tracking
+- Failed state management
+- Last error persistence
+- Recovery after Kafka restart
 
 ---
 
@@ -254,9 +275,9 @@ The system supports manual recovery for failed outbox events.
 
 Features:
 
-* Failed event listing endpoint
-* Manual retry endpoint
-* Persistent failure tracking
+- Failed event listing endpoint
+- Manual retry endpoint
+- Persistent failure tracking
 
 Endpoints:
 
@@ -295,11 +316,11 @@ orion_outbox_failed_total 0
 
 These metrics help monitor:
 
-* Total created orders
-* Completed saga flows
-* Cancelled saga flows
-* Pending outbox events
-* Failed outbox events
+- Total created orders
+- Completed saga flows
+- Cancelled saga flows
+- Pending outbox events
+- Failed outbox events
 
 ---
 
@@ -309,9 +330,9 @@ Consumers store processed event IDs to prevent duplicate event processing.
 
 Benefits:
 
-* Prevents duplicate business operations
-* Safe Kafka reprocessing
-* Reliable distributed event handling
+- Prevents duplicate business operations
+- Safe Kafka reprocessing
+- Reliable distributed event handling
 
 ---
 
@@ -319,14 +340,14 @@ Benefits:
 
 Every event contains:
 
-* correlation_id
-* causation_id
+- correlation_id
+- causation_id
 
 This enables:
 
-* Distributed tracing
-* Event chain tracking
-* Debugging across services
+- Distributed tracing
+- Event chain tracking
+- Debugging across services
 
 ---
 
@@ -336,13 +357,13 @@ Order Service uses structured JSON logs for event processing.
 
 Each important saga transition log includes:
 
-* service name
-* message
-* event_type
-* correlation_id
-* causation_id
-* order_id
-* status
+- service name
+- message
+- event_type
+- correlation_id
+- causation_id
+- order_id
+- status
 
 Example log:
 
@@ -379,18 +400,39 @@ The correlation ID is propagated into the `OrderCreated` event and stored in the
 
 ---
 
+## Database Migration Lifecycle
+
+Each service manages its own schema migrations using Alembic.
+
+Service-specific migration version tables:
+
+- alembic_version
+- payment_alembic_version
+- inventory_alembic_version
+- shipping_alembic_version
+- notification_alembic_version
+
+Benefits:
+
+- Independent schema evolution
+- Safer service ownership
+- Migration isolation
+- Production-style database lifecycle management
+
+---
+
 # System Guarantees
 
 The system is designed around eventual consistency principles.
 
 Key guarantees:
 
-* Reliable event publishing with Transactional Outbox
-* Duplicate event protection with Idempotent Consumers
-* Compensation-based failure recovery
-* Persistent failed event tracking
-* Manual operational recovery support
-* Distributed request tracing support
+- Reliable event publishing with Transactional Outbox
+- Duplicate event protection with Idempotent Consumers
+- Compensation-based failure recovery
+- Persistent failed event tracking
+- Manual operational recovery support
+- Distributed request tracing support
 
 ---
 
@@ -412,6 +454,8 @@ orion-distributed-order-system/
 ├── tests/
 │
 └── docs/
+    ├── architecture.md
+    └── api-contracts.md
 ```
 
 ---
@@ -421,12 +465,51 @@ orion-distributed-order-system/
 ## 1. Start Infrastructure
 
 ```bash
-docker compose up --build
+docker compose -f infra/docker-compose.yml up -d
 ```
 
 ---
 
-## 2. Start Services
+## 2. Run Database Migrations
+
+### Order Service
+
+```bash
+cd services/order-service
+alembic upgrade head
+```
+
+### Inventory Service
+
+```bash
+cd services/inventory-service
+alembic upgrade head
+```
+
+### Payment Service
+
+```bash
+cd services/payment-service
+alembic upgrade head
+```
+
+### Shipping Service
+
+```bash
+cd services/shipping-service
+alembic upgrade head
+```
+
+### Notification Service
+
+```bash
+cd services/notification-service
+alembic upgrade head
+```
+
+---
+
+## 3. Start Services
 
 ### Order Service
 
@@ -480,13 +563,13 @@ Integration tests require running infrastructure and services.
 Start containers first:
 
 ```bash
-docker compose up
+docker compose -f infra/docker-compose.yml up -d
 ```
 
 Then run:
 
 ```bash
-pytest tests/test_order_saga_integration.py
+pytest
 ```
 
 ---
@@ -501,10 +584,10 @@ quantity > 5
 
 This allows testing:
 
-* Saga compensation
-* Inventory release flow
-* Order cancellation flow
-* Outbox retry & recovery
+- Saga compensation
+- Inventory release flow
+- Order cancellation flow
+- Outbox retry & recovery
 
 ---
 
@@ -512,16 +595,17 @@ This allows testing:
 
 Tested scenarios:
 
-* Kafka outage simulation
-* Automatic retry handling
-* Failed event persistence
-* Manual event recovery
-* Compensation flow execution
-* Idempotent consumer validation
-* Event replay safety
-* Saga state transition validation
-* Correlation ID propagation validation
-* Metrics endpoint validation
+- Kafka outage simulation
+- Automatic retry handling
+- Failed event persistence
+- Manual event recovery
+- Compensation flow execution
+- Idempotent consumer validation
+- Event replay safety
+- Saga state transition validation
+- Correlation ID propagation validation
+- Metrics endpoint validation
+- Alembic migration validation
 
 ---
 
@@ -529,13 +613,14 @@ Tested scenarios:
 
 Potential next steps:
 
-* Inbox Pattern
-* Distributed tracing with OpenTelemetry
-* Prometheus integration
-* Grafana dashboards
-* Kafka manual offset management
-* Kubernetes deployment
-* CI/CD pipeline
+- Inbox Pattern
+- OpenTelemetry distributed tracing
+- Prometheus integration
+- Grafana dashboards
+- Kafka manual offset management
+- Kubernetes deployment
+- GitHub Actions CI/CD pipeline
+- Centralized logging stack
 
 ---
 
@@ -543,14 +628,15 @@ Potential next steps:
 
 This project was built to deeply understand:
 
-* Distributed systems
-* Event-driven architecture
-* Saga pattern
-* Reliable asynchronous communication
-* Failure recovery strategies
-* Production-oriented backend design
-* Distributed tracing concepts
-* Operational observability
+- Distributed systems
+- Event-driven architecture
+- Saga pattern
+- Reliable asynchronous communication
+- Failure recovery strategies
+- Production-oriented backend design
+- Distributed tracing concepts
+- Operational observability
+- Database migration lifecycle management
 
 ---
 
