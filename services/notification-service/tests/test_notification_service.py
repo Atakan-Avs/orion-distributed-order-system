@@ -4,7 +4,7 @@ from app.services.notification_service import (
 )
 
 
-def test_send_shipping_notification_creates_notification_event(monkeypatch):
+def test_send_shipping_notification_creates_notification_sent_event(monkeypatch):
     created_events = []
 
     def fake_create_event(
@@ -29,7 +29,7 @@ def test_send_shipping_notification_creates_notification_event(monkeypatch):
         fake_create_event,
     )
 
-    event = {
+    shipping_created_event = {
         "event_id": "shipping-event-001",
         "event_type": "ShippingCreated",
         "correlation_id": "correlation-001",
@@ -39,7 +39,7 @@ def test_send_shipping_notification_creates_notification_event(monkeypatch):
         },
     }
 
-    send_shipping_notification(event)
+    send_shipping_notification(shipping_created_event)
 
     assert len(created_events) == 1
 
@@ -55,7 +55,7 @@ def test_send_shipping_notification_creates_notification_event(monkeypatch):
     assert notification_event["payload"]["status"] == "SENT"
 
 
-def test_send_cancellation_notification_creates_notification_event(monkeypatch):
+def test_send_cancellation_notification_creates_notification_sent_event(monkeypatch):
     created_events = []
 
     def fake_create_event(
@@ -80,7 +80,7 @@ def test_send_cancellation_notification_creates_notification_event(monkeypatch):
         fake_create_event,
     )
 
-    event = {
+    order_cancelled_event = {
         "event_id": "order-cancelled-event-001",
         "event_type": "OrderCancelled",
         "correlation_id": "correlation-002",
@@ -90,7 +90,7 @@ def test_send_cancellation_notification_creates_notification_event(monkeypatch):
         },
     }
 
-    send_cancellation_notification(event)
+    send_cancellation_notification(order_cancelled_event)
 
     assert len(created_events) == 1
 
@@ -105,3 +105,88 @@ def test_send_cancellation_notification_creates_notification_event(monkeypatch):
     assert notification_event["payload"]["status"] == "SENT"
     assert "Your order has been cancelled" in notification_event["payload"]["message"]
     assert "payment failed" in notification_event["payload"]["message"]
+
+
+def test_send_cancellation_notification_uses_default_reason_when_missing(monkeypatch):
+    created_events = []
+
+    def fake_create_event(
+        event_type: str,
+        payload: dict,
+        source: str,
+        correlation_id: str = None,
+        causation_id: str = None,
+    ):
+        event = {
+            "event_type": event_type,
+            "payload": payload,
+            "source": source,
+            "correlation_id": correlation_id,
+            "causation_id": causation_id,
+        }
+        created_events.append(event)
+        return event
+
+    monkeypatch.setattr(
+        "app.services.notification_service.create_event",
+        fake_create_event,
+    )
+
+    order_cancelled_event = {
+        "event_id": "order-cancelled-event-002",
+        "event_type": "OrderCancelled",
+        "correlation_id": "correlation-003",
+        "payload": {
+            "order_id": 3,
+        },
+    }
+
+    send_cancellation_notification(order_cancelled_event)
+
+    notification_event = created_events[0]
+
+    assert notification_event["payload"]["order_id"] == 3
+    assert notification_event["payload"]["status"] == "SENT"
+    assert "Order was cancelled." in notification_event["payload"]["message"]
+
+
+def test_send_shipping_notification_handles_missing_payload_gracefully(monkeypatch):
+    created_events = []
+
+    def fake_create_event(
+        event_type: str,
+        payload: dict,
+        source: str,
+        correlation_id: str = None,
+        causation_id: str = None,
+    ):
+        event = {
+            "event_type": event_type,
+            "payload": payload,
+            "source": source,
+            "correlation_id": correlation_id,
+            "causation_id": causation_id,
+        }
+        created_events.append(event)
+        return event
+
+    monkeypatch.setattr(
+        "app.services.notification_service.create_event",
+        fake_create_event,
+    )
+
+    shipping_created_event = {
+        "event_id": "shipping-event-002",
+        "event_type": "ShippingCreated",
+        "correlation_id": "correlation-004",
+    }
+
+    send_shipping_notification(shipping_created_event)
+
+    notification_event = created_events[0]
+
+    assert notification_event["event_type"] == "NotificationSent"
+    assert notification_event["correlation_id"] == "correlation-004"
+    assert notification_event["causation_id"] == "shipping-event-002"
+    assert notification_event["payload"]["order_id"] is None
+    assert notification_event["payload"]["status"] == "SENT"
