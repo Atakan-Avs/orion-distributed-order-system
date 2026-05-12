@@ -1,19 +1,17 @@
-from app.services.inventory_service import reserve_inventory, release_inventory
+from app.models.outbox_event import OutboxEvent
+from app.services.inventory_service import release_inventory, reserve_inventory
 
 
-def test_reserve_inventory_publishes_inventory_reserved(monkeypatch):
-    published_events = []
+class FakeDB:
+    def __init__(self):
+        self.added_items = []
 
-    def fake_publish_event(topic: str, event: dict):
-        published_events.append({
-            "topic": topic,
-            "event": event,
-        })
+    def add(self, item):
+        self.added_items.append(item)
 
-    monkeypatch.setattr(
-        "app.services.inventory_service.publish_event",
-        fake_publish_event,
-    )
+
+def test_reserve_inventory_writes_inventory_reserved_to_outbox():
+    db = FakeDB()
 
     event = {
         "event_id": "order-event-001",
@@ -27,12 +25,17 @@ def test_reserve_inventory_publishes_inventory_reserved(monkeypatch):
         },
     }
 
-    reserve_inventory(event)
+    reserve_inventory(db, event)
 
-    assert len(published_events) == 1
-    assert published_events[0]["topic"] == "inventory-events"
+    assert len(db.added_items) == 1
 
-    published_event = published_events[0]["event"]
+    outbox_event = db.added_items[0]
+
+    assert isinstance(outbox_event, OutboxEvent)
+    assert outbox_event.topic == "inventory-events"
+    assert outbox_event.event_type == "InventoryReserved"
+
+    published_event = outbox_event.payload
 
     assert published_event["event_type"] == "InventoryReserved"
     assert published_event["source"] == "inventory-service"
@@ -45,19 +48,8 @@ def test_reserve_inventory_publishes_inventory_reserved(monkeypatch):
     assert published_event["payload"]["status"] == "RESERVED"
 
 
-def test_release_inventory_publishes_inventory_released(monkeypatch):
-    published_events = []
-
-    def fake_publish_event(topic: str, event: dict):
-        published_events.append({
-            "topic": topic,
-            "event": event,
-        })
-
-    monkeypatch.setattr(
-        "app.services.inventory_service.publish_event",
-        fake_publish_event,
-    )
+def test_release_inventory_writes_inventory_released_to_outbox():
+    db = FakeDB()
 
     event = {
         "event_id": "payment-failed-event-001",
@@ -71,12 +63,17 @@ def test_release_inventory_publishes_inventory_released(monkeypatch):
         },
     }
 
-    release_inventory(event)
+    release_inventory(db, event)
 
-    assert len(published_events) == 1
-    assert published_events[0]["topic"] == "inventory-events"
+    assert len(db.added_items) == 1
 
-    published_event = published_events[0]["event"]
+    outbox_event = db.added_items[0]
+
+    assert isinstance(outbox_event, OutboxEvent)
+    assert outbox_event.topic == "inventory-events"
+    assert outbox_event.event_type == "InventoryReleased"
+
+    published_event = outbox_event.payload
 
     assert published_event["event_type"] == "InventoryReleased"
     assert published_event["source"] == "inventory-service"
