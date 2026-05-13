@@ -5,6 +5,7 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.config import DATABASE_URL
 from app.db.database import Base
+from app.models.outbox_event import OutboxEvent  # noqa: F401
 from app.models.processed_event import ProcessedEvent  # noqa: F401
 
 config = context.config
@@ -22,6 +23,7 @@ def get_database_url() -> str:
 def include_object(object, name, type_, reflected, compare_to):
     allowed_tables = {
         "notification_processed_events",
+        "notification_outbox_events",
     }
 
     if type_ == "table":

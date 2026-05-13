@@ -45,17 +45,17 @@ def start_consumer():
                 continue
 
             if event_type == "ShippingCreated":
-                send_shipping_notification(event)
+                send_shipping_notification(db, event)
 
             elif event_type == "OrderCancelled":
-                send_cancellation_notification(event)
+                send_cancellation_notification(db, event)
 
             mark_event_processed(
                 db=db,
                 event_id=event_id,
                 event_type=event_type,
             )
-            
+
             db.commit()
 
         except Exception as error:

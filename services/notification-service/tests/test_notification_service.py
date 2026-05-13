@@ -4,30 +4,16 @@ from app.services.notification_service import (
 )
 
 
-def test_send_shipping_notification_creates_notification_sent_event(monkeypatch):
-    created_events = []
+class FakeDB:
+    def __init__(self):
+        self.added_items = []
 
-    def fake_create_event(
-        event_type: str,
-        payload: dict,
-        source: str,
-        correlation_id: str = None,
-        causation_id: str = None,
-    ):
-        event = {
-            "event_type": event_type,
-            "payload": payload,
-            "source": source,
-            "correlation_id": correlation_id,
-            "causation_id": causation_id,
-        }
-        created_events.append(event)
-        return event
+    def add(self, item):
+        self.added_items.append(item)
 
-    monkeypatch.setattr(
-        "app.services.notification_service.create_event",
-        fake_create_event,
-    )
+
+def test_send_shipping_notification_adds_notification_sent_event_to_outbox():
+    db = FakeDB()
 
     shipping_created_event = {
         "event_id": "shipping-event-001",
@@ -39,46 +25,32 @@ def test_send_shipping_notification_creates_notification_sent_event(monkeypatch)
         },
     }
 
-    send_shipping_notification(shipping_created_event)
+    send_shipping_notification(db, shipping_created_event)
 
-    assert len(created_events) == 1
+    assert len(db.added_items) == 1
 
-    notification_event = created_events[0]
+    outbox_event = db.added_items[0]
 
-    assert notification_event["event_type"] == "NotificationSent"
-    assert notification_event["source"] == "notification-service"
-    assert notification_event["correlation_id"] == "correlation-001"
-    assert notification_event["causation_id"] == "shipping-event-001"
+    assert outbox_event.topic == "notification-events"
+    assert outbox_event.event_type == "NotificationSent"
 
-    assert notification_event["payload"]["order_id"] == 1
-    assert notification_event["payload"]["message"] == "Your order has been shipped successfully."
-    assert notification_event["payload"]["status"] == "SENT"
+    payload = outbox_event.payload
+
+    assert payload["event_type"] == "NotificationSent"
+    assert payload["source"] == "notification-service"
+    assert payload["correlation_id"] == "correlation-001"
+    assert payload["causation_id"] == "shipping-event-001"
+
+    assert payload["payload"]["order_id"] == 1
+    assert payload["payload"]["message"] == "Your order has been shipped successfully."
+    assert payload["payload"]["status"] == "SENT"
+
+    assert "event_id" in payload
+    assert "occurred_at" in payload
 
 
-def test_send_cancellation_notification_creates_notification_sent_event(monkeypatch):
-    created_events = []
-
-    def fake_create_event(
-        event_type: str,
-        payload: dict,
-        source: str,
-        correlation_id: str = None,
-        causation_id: str = None,
-    ):
-        event = {
-            "event_type": event_type,
-            "payload": payload,
-            "source": source,
-            "correlation_id": correlation_id,
-            "causation_id": causation_id,
-        }
-        created_events.append(event)
-        return event
-
-    monkeypatch.setattr(
-        "app.services.notification_service.create_event",
-        fake_create_event,
-    )
+def test_send_cancellation_notification_adds_notification_sent_event_to_outbox():
+    db = FakeDB()
 
     order_cancelled_event = {
         "event_id": "order-cancelled-event-001",
@@ -90,47 +62,30 @@ def test_send_cancellation_notification_creates_notification_sent_event(monkeypa
         },
     }
 
-    send_cancellation_notification(order_cancelled_event)
+    send_cancellation_notification(db, order_cancelled_event)
 
-    assert len(created_events) == 1
+    assert len(db.added_items) == 1
 
-    notification_event = created_events[0]
+    outbox_event = db.added_items[0]
 
-    assert notification_event["event_type"] == "NotificationSent"
-    assert notification_event["source"] == "notification-service"
-    assert notification_event["correlation_id"] == "correlation-002"
-    assert notification_event["causation_id"] == "order-cancelled-event-001"
+    assert outbox_event.topic == "notification-events"
+    assert outbox_event.event_type == "NotificationSent"
 
-    assert notification_event["payload"]["order_id"] == 2
-    assert notification_event["payload"]["status"] == "SENT"
-    assert "Your order has been cancelled" in notification_event["payload"]["message"]
-    assert "payment failed" in notification_event["payload"]["message"]
+    payload = outbox_event.payload
+
+    assert payload["event_type"] == "NotificationSent"
+    assert payload["source"] == "notification-service"
+    assert payload["correlation_id"] == "correlation-002"
+    assert payload["causation_id"] == "order-cancelled-event-001"
+
+    assert payload["payload"]["order_id"] == 2
+    assert payload["payload"]["status"] == "SENT"
+    assert "Your order has been cancelled" in payload["payload"]["message"]
+    assert "payment failed" in payload["payload"]["message"]
 
 
-def test_send_cancellation_notification_uses_default_reason_when_missing(monkeypatch):
-    created_events = []
-
-    def fake_create_event(
-        event_type: str,
-        payload: dict,
-        source: str,
-        correlation_id: str = None,
-        causation_id: str = None,
-    ):
-        event = {
-            "event_type": event_type,
-            "payload": payload,
-            "source": source,
-            "correlation_id": correlation_id,
-            "causation_id": causation_id,
-        }
-        created_events.append(event)
-        return event
-
-    monkeypatch.setattr(
-        "app.services.notification_service.create_event",
-        fake_create_event,
-    )
+def test_send_cancellation_notification_uses_default_reason_when_missing():
+    db = FakeDB()
 
     order_cancelled_event = {
         "event_id": "order-cancelled-event-002",
@@ -141,39 +96,18 @@ def test_send_cancellation_notification_uses_default_reason_when_missing(monkeyp
         },
     }
 
-    send_cancellation_notification(order_cancelled_event)
+    send_cancellation_notification(db, order_cancelled_event)
 
-    notification_event = created_events[0]
+    outbox_event = db.added_items[0]
+    payload = outbox_event.payload
 
-    assert notification_event["payload"]["order_id"] == 3
-    assert notification_event["payload"]["status"] == "SENT"
-    assert "Order was cancelled." in notification_event["payload"]["message"]
+    assert payload["payload"]["order_id"] == 3
+    assert payload["payload"]["status"] == "SENT"
+    assert "Order was cancelled." in payload["payload"]["message"]
 
 
-def test_send_shipping_notification_handles_missing_payload_gracefully(monkeypatch):
-    created_events = []
-
-    def fake_create_event(
-        event_type: str,
-        payload: dict,
-        source: str,
-        correlation_id: str = None,
-        causation_id: str = None,
-    ):
-        event = {
-            "event_type": event_type,
-            "payload": payload,
-            "source": source,
-            "correlation_id": correlation_id,
-            "causation_id": causation_id,
-        }
-        created_events.append(event)
-        return event
-
-    monkeypatch.setattr(
-        "app.services.notification_service.create_event",
-        fake_create_event,
-    )
+def test_send_shipping_notification_handles_missing_payload_gracefully():
+    db = FakeDB()
 
     shipping_created_event = {
         "event_id": "shipping-event-002",
@@ -181,12 +115,13 @@ def test_send_shipping_notification_handles_missing_payload_gracefully(monkeypat
         "correlation_id": "correlation-004",
     }
 
-    send_shipping_notification(shipping_created_event)
+    send_shipping_notification(db, shipping_created_event)
 
-    notification_event = created_events[0]
+    outbox_event = db.added_items[0]
+    payload = outbox_event.payload
 
-    assert notification_event["event_type"] == "NotificationSent"
-    assert notification_event["correlation_id"] == "correlation-004"
-    assert notification_event["causation_id"] == "shipping-event-002"
-    assert notification_event["payload"]["order_id"] is None
-    assert notification_event["payload"]["status"] == "SENT"
+    assert payload["event_type"] == "NotificationSent"
+    assert payload["correlation_id"] == "correlation-004"
+    assert payload["causation_id"] == "shipping-event-002"
+    assert payload["payload"]["order_id"] is None
+    assert payload["payload"]["status"] == "SENT"

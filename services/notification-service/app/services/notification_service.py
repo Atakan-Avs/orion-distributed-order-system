@@ -1,7 +1,8 @@
 from app.core.event_factory import create_event
+from app.models.outbox_event import OutboxEvent
 
 
-def send_shipping_notification(event: dict):
+def send_shipping_notification(db, event: dict):
     print(f"[Notification Service] ShippingCreated event received: {event}")
 
     payload = event.get("payload", {})
@@ -20,10 +21,18 @@ def send_shipping_notification(event: dict):
         causation_id=event.get("event_id"),
     )
 
-    print(f"[Notification Service] Shipping notification sent: {notification_event}")
+    outbox_event = OutboxEvent(
+        topic="notification-events",
+        event_type="NotificationSent",
+        payload=notification_event,
+    )
+
+    db.add(outbox_event)
+
+    print(f"[Notification Service] NotificationSent added to outbox: {notification_event}")
 
 
-def send_cancellation_notification(event: dict):
+def send_cancellation_notification(db, event: dict):
     print(f"[Notification Service] OrderCancelled event received: {event}")
 
     payload = event.get("payload", {})
@@ -43,4 +52,12 @@ def send_cancellation_notification(event: dict):
         causation_id=event.get("event_id"),
     )
 
-    print(f"[Notification Service] Cancellation notification sent: {notification_event}")
+    outbox_event = OutboxEvent(
+        topic="notification-events",
+        event_type="NotificationSent",
+        payload=notification_event,
+    )
+
+    db.add(outbox_event)
+
+    print(f"[Notification Service] NotificationSent added to outbox: {notification_event}")
