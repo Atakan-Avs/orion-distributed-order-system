@@ -2,7 +2,7 @@
 
 Production-oriented distributed order processing system built with Python, FastAPI, Kafka, PostgreSQL, Docker, and Saga architecture.
 
-This project focuses on real-world distributed systems concepts such as asynchronous communication, reliable event publishing, compensation flows, idempotent consumers, structured logging, distributed tracing support, schema migration management, failure recovery, and service-level testing.
+This project focuses on real-world distributed systems concepts such as asynchronous communication, reliable event publishing, compensation flows, idempotent consumers, structured logging, distributed tracing support, schema migration management, failure recovery, end-to-end saga validation, and service-level testing.
 
 ---
 
@@ -53,6 +53,7 @@ OrderCreated
 → PaymentFailed
 → InventoryReleased
 → OrderCancelled
+→ NotificationSent
 ```
 
 ---
@@ -83,6 +84,7 @@ OrderCreated
 - Transactional Outbox Pattern
 - Idempotent Consumer Pattern
 - Retry Mechanism
+- Dead Letter Queue (DLQ)
 - Failed Event Recovery
 - Compensation Transactions
 
@@ -171,15 +173,18 @@ Key Features:
 
 Responsibilities:
 
-- Consume order lifecycle events
-- Simulate asynchronous notifications
+- Consume distributed order lifecycle events
 - Publish NotificationSent events
+- Notify users for successful shipments and cancellations
 
 Key Features:
 
-- Event-driven notification flow
+- Transactional Outbox
+- Retry mechanism
+- Dead Letter Queue (DLQ)
 - Kafka consumer architecture
 - Correlation/Causation propagation
+- Idempotent consumer support
 - Service-level event tests
 - Alembic migrations
 
@@ -199,6 +204,7 @@ OrderCreated
 → PaymentCompleted
 → ShippingCreated
 → NotificationSent
+→ OrderCompleted
 ```
 
 Compensation Flow:
@@ -209,6 +215,7 @@ OrderCreated
 → PaymentFailed
 → InventoryReleased
 → OrderCancelled
+→ NotificationSent
 ```
 
 ---
@@ -243,6 +250,7 @@ Implemented in:
 - inventory-service
 - payment-service
 - shipping-service
+- notification-service
 
 Instead of publishing directly to Kafka:
 
@@ -272,6 +280,27 @@ Features:
 - Failed state management
 - Last error persistence
 - Recovery after Kafka restart
+
+---
+
+## Dead Letter Queue (DLQ)
+
+Notification Service supports Dead Letter Queue publishing for unrecoverable failures.
+
+Flow:
+
+```text
+Kafka Publish Failure
+→ Retry Attempts
+→ DLQ Publish
+→ Failed State Persistence
+```
+
+Benefits:
+
+- Prevents silent event loss
+- Supports operational recovery
+- Improves distributed system reliability
 
 ---
 
@@ -344,7 +373,7 @@ Benefits:
 
 ## Correlation & Causation IDs
 
-Every event contains:
+Every distributed event contains:
 
 - correlation_id
 - causation_id
@@ -353,13 +382,14 @@ This enables:
 
 - Distributed tracing
 - Event chain tracking
-- Debugging across services
+- Cross-service debugging
+- End-to-end request observability
 
 ---
 
 ## Structured Logging
 
-Order Service uses structured JSON logs for event processing.
+Order Service uses structured JSON logs for distributed event processing.
 
 Each important saga transition log includes:
 
@@ -402,7 +432,7 @@ X-Correlation-ID: custom-correlation-id
 
 If no correlation ID is provided, the service generates one automatically.
 
-The correlation ID is propagated into the `OrderCreated` event and stored in the outbox payload, allowing the full distributed event chain to be traced from the initial HTTP request.
+The correlation ID is propagated across the full distributed event chain.
 
 ---
 
@@ -427,7 +457,9 @@ Benefits:
 
 ---
 
-# Service-Level Testing
+# Testing Strategy
+
+## Service-Level Tests
 
 All core services include pytest-based service-level tests.
 
@@ -442,6 +474,49 @@ Validated scenarios include:
 - Graceful payload handling
 - Saga transition validation
 
+---
+
+## End-to-End Saga Integration Tests
+
+The project includes distributed integration tests validating complete saga workflows across all services.
+
+Validated flows:
+
+### Successful Flow
+
+```text
+HTTP Request
+→ OrderCreated
+→ InventoryReserved
+→ PaymentCompleted
+→ ShippingCreated
+→ NotificationSent
+→ COMPLETED
+```
+
+### Compensation Flow
+
+```text
+HTTP Request
+→ OrderCreated
+→ InventoryReserved
+→ PaymentFailed
+→ InventoryReleased
+→ OrderCancelled
+→ NotificationSent
+→ CANCELLED
+```
+
+Integration tests validate:
+
+- Distributed event chain correctness
+- Correlation ID propagation
+- Causation ID chain integrity
+- Outbox event persistence
+- Saga completion consistency
+- Compensation workflow correctness
+- Notification event propagation
+
 Current test status:
 
 ```text
@@ -450,8 +525,9 @@ Inventory Service      2 passed
 Payment Service        2 passed
 Shipping Service       3 passed
 Notification Service   4 passed
+Integration Tests      2 passed
 
-Total                  18 passed
+Total                  20 passed
 ```
 
 ---
@@ -468,6 +544,7 @@ Key guarantees:
 - Persistent failed event tracking
 - Manual operational recovery support
 - Distributed request tracing support
+- End-to-end saga consistency validation
 
 ---
 
@@ -593,18 +670,16 @@ http://127.0.0.1:8000/docs
 
 # Integration Testing
 
-Integration tests require running infrastructure and services.
-
-Start containers first:
+Start infrastructure first:
 
 ```bash
 docker compose -f infra/docker-compose.yml up -d
 ```
 
-Then run:
+Run distributed saga integration tests:
 
 ```bash
-pytest
+pytest tests/test_order_saga_integration.py
 ```
 
 ---
@@ -622,27 +697,31 @@ This allows testing:
 - Saga compensation
 - Inventory release flow
 - Order cancellation flow
-- Outbox retry & recovery
+- Notification cancellation flow
+- Retry & recovery mechanisms
+- Distributed failure handling
 
 ---
 
 # Reliability Testing Performed
 
-Tested scenarios:
+Validated scenarios include:
 
 - Kafka outage simulation
 - Automatic retry handling
 - Failed event persistence
 - Manual event recovery
+- DLQ publishing
 - Compensation flow execution
 - Idempotent consumer validation
 - Event replay safety
 - Saga state transition validation
 - Correlation ID propagation validation
+- Causation chain validation
 - Metrics endpoint validation
 - Alembic migration validation
 - Service-level event flow testing
-- Shipping & notification flow validation
+- End-to-end distributed workflow validation
 
 ---
 
@@ -674,6 +753,7 @@ This project was built to deeply understand:
 - Distributed tracing concepts
 - Operational observability
 - Database migration lifecycle management
+- End-to-end distributed workflow validation
 
 ---
 
