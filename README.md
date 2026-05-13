@@ -2,7 +2,7 @@
 
 Production-oriented distributed order processing system built with Python, FastAPI, Kafka, PostgreSQL, Docker, and Saga architecture.
 
-This project focuses on real-world distributed systems concepts such as asynchronous communication, reliable event publishing, compensation flows, idempotent consumers, structured logging, distributed tracing support, schema migration management, and failure recovery.
+This project focuses on real-world distributed systems concepts such as asynchronous communication, reliable event publishing, compensation flows, idempotent consumers, structured logging, distributed tracing support, schema migration management, failure recovery, and service-level testing.
 
 ---
 
@@ -35,12 +35,14 @@ Kafka
   v
 Shipping Service
   |
-  | ShippingStarted / ShippingFailed
+  | ShippingCreated
   v
 Kafka
   |
   v
 Notification Service
+  |
+  | NotificationSent
 ```
 
 Compensation Flow:
@@ -152,12 +154,13 @@ Key Features:
 Responsibilities:
 
 - Create shipment records
-- Publish ShippingStarted events
+- Publish ShippingCreated events
 - Complete successful saga flows
 
 Key Features:
 
 - Transactional Outbox
+- Correlation/Causation propagation
 - Idempotent consumer support
 - Final saga completion handling
 - Alembic migrations
@@ -170,11 +173,14 @@ Responsibilities:
 
 - Consume order lifecycle events
 - Simulate asynchronous notifications
+- Publish NotificationSent events
 
 Key Features:
 
 - Event-driven notification flow
 - Kafka consumer architecture
+- Correlation/Causation propagation
+- Service-level event tests
 - Alembic migrations
 
 ---
@@ -191,7 +197,7 @@ Successful Flow:
 OrderCreated
 → InventoryReserved
 → PaymentCompleted
-→ ShippingStarted
+→ ShippingCreated
 → NotificationSent
 ```
 
@@ -421,6 +427,35 @@ Benefits:
 
 ---
 
+# Service-Level Testing
+
+All core services include pytest-based service-level tests.
+
+Validated scenarios include:
+
+- Event handler validation
+- Outbox event creation
+- Correlation ID propagation
+- Causation ID propagation
+- Retry & failure handling
+- Notification flow validation
+- Graceful payload handling
+- Saga transition validation
+
+Current test status:
+
+```text
+Order Service          7 passed
+Inventory Service      2 passed
+Payment Service        2 passed
+Shipping Service       3 passed
+Notification Service   4 passed
+
+Total                  18 passed
+```
+
+---
+
 # System Guarantees
 
 The system is designed around eventual consistency principles.
@@ -606,6 +641,8 @@ Tested scenarios:
 - Correlation ID propagation validation
 - Metrics endpoint validation
 - Alembic migration validation
+- Service-level event flow testing
+- Shipping & notification flow validation
 
 ---
 
